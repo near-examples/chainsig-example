@@ -9,49 +9,49 @@ const bitcoin = {
   explorer: 'https://blockstream.info/testnet',
   getBalance: async ({ address, getUtxos = false }) => {
     try {
-
-    const res = await fetchJson(
-      `https://blockstream.info/testnet/api/address/${address}/utxo`,
-    );
-
-    if (!res) return
-
-    let utxos = res.map((utxo) => ({
-      txid: utxo.txid,
-      vout: utxo.vout,
-      value: utxo.value,
-    }));
-    // ONLY RETURNING AND SIGNING LARGEST UTXO
-    // WHY?
-    // For convenience in client side, this will only require 1 Near signature for 1 Bitcoin TX.
-    // Solutions for signing multiple UTXOs using MPC with a single Near TX are being worked on.
-    let maxValue = 0;
-    utxos.forEach((utxo) => {
-      if (utxo.value > maxValue) maxValue = utxo.value;
-    });
-    utxos = utxos.filter((utxo) => utxo.value === maxValue);
-
-    if (!utxos || !utxos.length) {
-      console.log(
-        'no utxos for address',
-        address,
-        'please fund address and try again',
+      const res = await fetchJson(
+        `https://blockstream.info/testnet/api/address/${address}/utxo`,
       );
-    }
 
-    return getUtxos ? utxos : maxValue;
-  } catch (e) {
-    console.log('e', e)
-  }
+      if (!res) return
+
+      let utxos = res.map((utxo) => ({
+        txid: utxo.txid,
+        vout: utxo.vout,
+        value: utxo.value,
+      }));
+      // ONLY RETURNING AND SIGNING LARGEST UTXO
+      // WHY?
+      // For convenience in client side, this will only require 1 Near signature for 1 Bitcoin TX.
+      // Solutions for signing multiple UTXOs using MPC with a single Near TX are being worked on.
+      let maxValue = 0;
+      utxos.forEach((utxo) => {
+        if (utxo.value > maxValue) maxValue = utxo.value;
+      });
+      utxos = utxos.filter((utxo) => utxo.value === maxValue);
+
+      if (!utxos || !utxos.length) {
+        console.log(
+          'no utxos for address',
+          address,
+          'please fund address and try again',
+        );
+      }
+
+      return getUtxos ? utxos : maxValue;
+    } catch (e) {
+      console.log('e', e)
+    }
   },
   send: async ({
     from: address,
     publicKey,
     to = 'mkB9PV9YcKiLNbf3v8h1TRo863WDAdUkJn',
     amount = '1',
+    path
   }) => {
     if (!address) return console.log('must provide a sending address');
-    const { getBalance, explorer, currency } = bitcoin;
+    const { getBalance, explorer } = bitcoin;
     const sats = parseInt(amount);
 
     // get utxos
@@ -115,7 +115,7 @@ const bitcoin = {
       publicKey: Buffer.from(publicKey, 'hex'),
       sign: async (transactionHash) => {
         const payload = Object.values(ethers.utils.arrayify(transactionHash));
-        const sig = await sign(payload, "bitcoin,1");
+        const sig = await sign(payload, path);
 
         if (!sig) return;
 
@@ -127,7 +127,6 @@ const bitcoin = {
       utxos.map(async (_, index) => {
         console.log(index)
         try {
-          console.log('got here !!!', index, keyPair)
           await psbt.signInputAsync(index, keyPair);
         } catch (e) {
           console.warn(e, 'not signed');
@@ -139,7 +138,6 @@ const bitcoin = {
 
     // broadcast tx
     try {
-      console.log('blockstream body',  psbt.extractTransaction().toHex())
       const res = await fetch(`https://corsproxy.io/?${bitcoinRpc}/tx`, {
         method: 'POST',
         body: psbt.extractTransaction().toHex(),
@@ -151,8 +149,10 @@ const bitcoin = {
         console.log(
           'NOTE: it might take a minute for transaction to be included in mempool',
         );
+        return hash
+      } else {
+        return res
       }
-      return res
     } catch (e) {
       console.log('error broadcasting bitcoin tx', JSON.stringify(e));
     }

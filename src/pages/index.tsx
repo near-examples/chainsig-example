@@ -19,40 +19,44 @@ export default function Home() {
   const { signedAccountId } = useStore();
   const [balance, setBalance] = useState('')
   const [address, setAddress] = useState('')
-  const [publicKey, setPublicKey] = useState('')
   const [progress, setProgress] = useState(false)
   const [error, setError] = useState('')
   const [path, setPath] = useState('bitcoin,1')
   const [hash, setHash] = useState('')
 
-  const onSubmit = (data) => sendBtc(data.to, data.amount)
+  const getAddress = async () => {
+    const struct = await generateAddress({
+      publicKey: MPC_PUBLIC_KEY,
+      accountId: signedAccountId,
+      path: path,
+      chain: 'bitcoin'
+    })
+    setAddress(struct.address)
+    return [struct.address, struct.publicKey]
+  }
 
-  useEffect(() => {
-    const getAddress = async () => {
-      const struct = await generateAddress({
-        publicKey: MPC_PUBLIC_KEY,
-        accountId: signedAccountId,
-        path,
-        chain: 'bitcoin'
-      })
-      setAddress(struct.address)
-      setPublicKey(struct.publicKey)
-    } 
-    getAddress()
-  }, [signedAccountId, path])
-
-  const sendBtc = async (to, amount) => {
+  const onSubmit = async (data) => {
     setProgress(true)
-    const response: Response | void = await bitcoin.send({
-      from: address,
-      publicKey: publicKey,
-      to,
-      amount
+
+    const struct = await generateAddress({
+      publicKey: MPC_PUBLIC_KEY,
+      accountId: signedAccountId,
+      path: data.path,
+      chain: 'bitcoin'
+    })
+    const btcAddress = struct.address
+    const btcPublicKey = struct.publicKey
+
+    const response: string | void | Response = await bitcoin.send({
+      from: btcAddress,
+      publicKey: btcPublicKey,
+      to: data.to,
+      amount: data.amount,
+      path: data.path
     })
 
-    if (response && response.status === 200) {
-      const text = await response.text();
-      setHash(text)
+    if (typeof response === 'string') {
+      setHash(String(response))
     } else if (response) {
       const text = await response.text()
       const jsonText = JSON.parse(text.split("error:")[1])
@@ -61,12 +65,16 @@ export default function Home() {
     setProgress(false)
   }
 
+  useEffect(() => {
+    getAddress()
+  }, [signedAccountId, path, balance, error, hash])
+
   const checkBal = async () => {
     const response = await bitcoin.getBalance({
       address: address,
     })
     if (response) {
-      setBalance(response)
+      setBalance(response)  
     } else {
       setBalance('0')
     }
@@ -97,7 +105,7 @@ export default function Home() {
           </div>
         : <div className={"flex border justify-center min-w-[30em] max-w-[30em] w-[50vw] min-h-[26em] max-h-[24em] h-[50vh] bg-white rounded-xl shadow-xl p-4"} style={{ display: 'flex', flexDirection: 'column' }}>
           <p>{`Path:`}</p>
-          <input className="border p-1 rounded bg-slate-700 text-white pl-4 w-1/3" defaultValue={'bitcoin,1'} onChange={(e) => setPath(e.target.value)} />
+          <input className="border p-1 rounded bg-slate-700 text-white pl-4 w-1/3" defaultValue={'bitcoin,1'}  {...register("path")} onChange={(e) => setPath(e.target.value)} />
 
           <p>{`Address:`}</p>
           <input className="border p-1 rounded bg-slate-500 text-white pl-4" defaultValue={address} disabled />

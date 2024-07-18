@@ -65,20 +65,19 @@ const bitcoin = {
     const { getUtxos, explorer } = bitcoin;
     const sats = parseInt(amount);
 
+    const utxos = await getUtxos({ address });
+
     // calculate fee
     const feeRate = await fetchJson(`${bitcoinRpc}/fee-estimates`);
     const estimatedSize = utxos.length * 148 + 2 * 34 + 10;
     const fee = estimatedSize * (feeRate[6] + 3);
-    const change = totalInput - sats - fee;
 
     // get utxos
-    const utxos = await getUtxos({ address });
-
-    const psbt = new bitcoinJs.Psbt({ network: bitcoinJs.networks.testnet });
     let totalInput = 0;
+    const psbt = new bitcoinJs.Psbt({ network: bitcoinJs.networks.testnet });
     await Promise.all(
       utxos.map(async (utxo) => {
-        if (totalInput > amount + fee) {
+        if (totalInput < amount + fee) {
           totalInput += utxo.value;
 
           const transaction = await fetchTransaction(utxo.txid);
@@ -110,6 +109,7 @@ const bitcoin = {
       value: sats,
     });
 
+    const change = totalInput - sats - fee;
     if (change > 0) {
       psbt.addOutput({
         address: address,

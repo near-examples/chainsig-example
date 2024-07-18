@@ -43,18 +43,16 @@ const bitcoin = {
     }
   },
   getUtxos: async ({ address }) => {
-    try {
-      const res = await fetchJson(
-          `https://blockstream.info/testnet/api/address/${address}/utxo`,
-      );
+    const res = await fetchJson(
+        `https://blockstream.info/testnet/api/address/${address}/utxo`,
+    );
 
-      if (!res) return
-      return res.map((utxo) => ({
-        txid: utxo.txid,
-        vout: utxo.vout,
-        value: utxo.value,
-      })).sort((a, b) => b.value - a.value);
-    }
+    if (!res) return;
+    return res.map((utxo) => ({
+      txid: utxo.txid,
+      vout: utxo.vout,
+      value: utxo.value,
+    })).sort((a, b) => b.value - a.value);
   },
   send: async ({
     from: address,
@@ -79,7 +77,7 @@ const bitcoin = {
     const psbt = new bitcoinJs.Psbt({ network: bitcoinJs.networks.testnet });
     let totalInput = 0;
     await Promise.all(
-      utxos.forEach((utxo) => {
+      utxos.map(async (utxo) => {
         if (totalInput > amount + fee) {
           totalInput += utxo.value;
 

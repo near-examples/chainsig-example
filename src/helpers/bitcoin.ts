@@ -7,7 +7,7 @@ const bitcoin = {
   name: 'Bitcoin Testnet',
   currency: 'sats',
   explorer: 'https://blockstream.info/testnet',
-  getBalance: async ({ address, getUtxos = false }) => {
+  getBalance: async ({ address }) => {
     try {
       const res = await fetchJson(
         `https://blockstream.info/testnet/api/address/${address}/utxo`,
@@ -24,11 +24,10 @@ const bitcoin = {
       // WHY?
       // For convenience in client side, this will only require 1 Near signature for 1 Bitcoin TX.
       // Solutions for signing multiple UTXOs using MPC with a single Near TX are being worked on.
-      let maxValue = 0;
+      let total = 0;
       utxos.forEach((utxo) => {
-        if (utxo.value > maxValue) maxValue = utxo.value;
+        total += utxo.value;
       });
-      utxos = utxos.filter((utxo) => utxo.value === maxValue);
 
       if (!utxos || !utxos.length) {
         console.log(
@@ -38,10 +37,22 @@ const bitcoin = {
         );
       }
 
-      return getUtxos ? utxos : maxValue;
+      return total;
     } catch (e) {
       console.log('e', e)
     }
+  },
+  getUtxos: async ({ address }) => {
+    const res = await fetchJson(
+        `https://blockstream.info/testnet/api/address/${address}/utxo`,
+    );
+
+    if (!res) return;
+    return res.map((utxo) => ({
+      txid: utxo.txid,
+      vout: utxo.vout,
+      value: utxo.value,
+    })).sort((a, b) => b.value - a.value);
   },
   send: async ({
     from: address,
@@ -51,44 +62,45 @@ const bitcoin = {
     path
   }) => {
     if (!address) return console.log('must provide a sending address');
-    const { getBalance, explorer } = bitcoin;
+    const { getUtxos, explorer } = bitcoin;
     const sats = parseInt(amount);
 
+    const utxos = await getUtxos({ address });
+
+    // calculate fee
+    const feeRate = await fetchJson(`${bitcoinRpc}/fee-estimates`);
+    const estimatedSize = utxos.length * 148 + 2 * 34 + 10;
+    const fee = estimatedSize * (feeRate[6] + 3);
+
     // get utxos
-    const utxos = await getBalance({ address, getUtxos: true });
-
-    if (!utxos) return
-    // check balance (TODO include fee in check)
-    if (utxos[0].value < sats) {
-      return console.log('insufficient funds');
-    }
-
-    const psbt = new bitcoinJs.Psbt({ network: bitcoinJs.networks.testnet });
     let totalInput = 0;
+    const psbt = new bitcoinJs.Psbt({ network: bitcoinJs.networks.testnet });
     await Promise.all(
       utxos.map(async (utxo) => {
-        totalInput += utxo.value;
+        if (totalInput < amount + fee) {
+          totalInput += utxo.value;
 
-        const transaction = await fetchTransaction(utxo.txid);
-        let inputOptions;
-        if (transaction.outs[utxo.vout].script.includes('0014')) {
-          inputOptions = {
-            hash: utxo.txid,
-            index: utxo.vout,
-            witnessUtxo: {
-              script: transaction.outs[utxo.vout].script,
-              value: utxo.value,
-            },
-          };
-        } else {
-          inputOptions = {
-            hash: utxo.txid,
-            index: utxo.vout,
-            nonWitnessUtxo: Buffer.from(transaction.toHex(), 'hex'),
-          };
+          const transaction = await fetchTransaction(utxo.txid);
+          let inputOptions;
+          if (transaction.outs[utxo.vout].script.includes('0014')) {
+            inputOptions = {
+              hash: utxo.txid,
+              index: utxo.vout,
+              witnessUtxo: {
+                script: transaction.outs[utxo.vout].script,
+                value: utxo.value,
+              },
+            };
+          } else {
+            inputOptions = {
+              hash: utxo.txid,
+              index: utxo.vout,
+              nonWitnessUtxo: Buffer.from(transaction.toHex(), 'hex'),
+            };
+          }
+
+          psbt.addInput(inputOptions);
         }
-
-        psbt.addInput(inputOptions);
       }),
     );
 
@@ -97,12 +109,7 @@ const bitcoin = {
       value: sats,
     });
 
-    // calculate fee
-    const feeRate = await fetchJson(`${bitcoinRpc}/fee-estimates`);
-    const estimatedSize = utxos.length * 148 + 2 * 34 + 10;
-    const fee = estimatedSize * (feeRate[6] + 3);
     const change = totalInput - sats - fee;
-
     if (change > 0) {
       psbt.addOutput({
         address: address,

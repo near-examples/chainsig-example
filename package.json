@@ -14,10 +14,10 @@
   },
   "dependencies": {
     "@bitcoinerlab/secp256k1": "^1.1.1",
-    "@near-wallet-selector/core": "^8.9.7",
-    "@near-wallet-selector/here-wallet": "^8.9.7",
-    "@near-wallet-selector/modal-ui": "^8.9.7",
-    "@near-wallet-selector/my-near-wallet": "^8.9.7",
+    "@near-wallet-selector/core": "^8.9.11",
+    "@near-wallet-selector/here-wallet": "^8.9.11",
+    "@near-wallet-selector/modal-ui": "^8.9.11",
+    "@near-wallet-selector/my-near-wallet": "^8.9.11",
     "@web3-onboard/core": "^2.21.5",
     "@web3-onboard/injected-wallets": "^2.10.15",
     "@web3-onboard/ledger": "^2.6.0",
@@ -38,7 +38,7 @@
     "ieee754": "^1.2.1",
     "install": "^0.13.0",
     "keccak": "^3.0.4",
-    "near-api-js": "^3.0.4",
+    "near-api-js": "^4.0.3",
     "near-social-vm": "github:gagdiez/VM",
     "next": "14.2.0",
     "npm": "^10.8.1",
@@ -53,9 +53,6 @@
     "tailwindcss": "^3.4.4",
     "xrpl": "^3.0.0",
     "zustand": "^4.5.2"
-  },
-  "overrides": {
-    "near-api-js": "^3.0.4"
   },
   "devDependencies": {
     "@types/node": "^20.14.8",

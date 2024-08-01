@@ -3,6 +3,75 @@ import { fetchJson } from './utils';
 import { sign } from './near';
 import * as bitcoinJs from 'bitcoinjs-lib';
 
+const constructPtsb = async (
+  address,
+  to = 'mkB9PV9YcKiLNbf3v8h1TRo863WDAdUkJn',
+  amount = '1',
+): Promise<[any[], any, string] | void> => {
+  if (!address) return console.log('must provide a sending address');
+  const { getBalance, explorer } = bitcoin;
+  const sats = parseInt(amount);
+
+  // get utxos
+  const utxos = await getBalance({ address, getUtxos: true });
+
+  if (!utxos) return
+  // check balance (TODO include fee in check)
+  if (utxos[0].value < sats) {
+    return console.log('insufficient funds');
+  }
+
+  const psbt = new bitcoinJs.Psbt({ network: bitcoinJs.networks.testnet });
+
+  let totalInput = 0;
+  await Promise.all(
+    utxos.map(async (utxo) => {
+      totalInput += utxo.value;
+
+      const transaction = await fetchTransaction(utxo.txid);
+      let inputOptions;
+      if (transaction.outs[utxo.vout].script.includes('0014')) {
+        inputOptions = {
+          hash: utxo.txid,
+          index: utxo.vout,
+          witnessUtxo: {
+            script: transaction.outs[utxo.vout].script,
+            value: utxo.value,
+          },
+        };
+      } else {
+        inputOptions = {
+          hash: utxo.txid,
+          index: utxo.vout,
+          nonWitnessUtxo: Buffer.from(transaction.toHex(), 'hex'),
+        };
+      }
+
+      psbt.addInput(inputOptions);
+    }),
+  );
+
+  psbt.addOutput({
+    address: to,
+    value: sats,
+  });
+
+  // calculate fee
+  const feeRate = await fetchJson(`${bitcoinRpc}/fee-estimates`);
+  const estimatedSize = utxos.length * 148 + 2 * 34 + 10;
+  const fee = estimatedSize * (feeRate[6] + 3);
+  const change = totalInput - sats - fee;
+
+  if (change > 0) {
+    psbt.addOutput({
+      address: address,
+      value: Math.floor(change),
+    });
+  }
+
+  return [utxos, psbt, explorer]
+}
+
 const bitcoin = {
   name: 'Bitcoin Testnet',
   currency: 'sats',
@@ -48,80 +117,49 @@ const bitcoin = {
     publicKey,
     to = 'mkB9PV9YcKiLNbf3v8h1TRo863WDAdUkJn',
     amount = '1',
-    path
+    path,
   }) => {
-    if (!address) return console.log('must provide a sending address');
-    const { getBalance, explorer } = bitcoin;
-    const sats = parseInt(amount);
+    const result = await constructPtsb(address, to, amount)
+    if (!result) return
+    const [utxos, psbt] = result;
 
-    // get utxos
-    const utxos = await getBalance({ address, getUtxos: true });
-
-    if (!utxos) return
-    // check balance (TODO include fee in check)
-    if (utxos[0].value < sats) {
-      return console.log('insufficient funds');
-    }
-
-    const psbt = new bitcoinJs.Psbt({ network: bitcoinJs.networks.testnet });
-    let totalInput = 0;
-    await Promise.all(
-      utxos.map(async (utxo) => {
-        totalInput += utxo.value;
-
-        const transaction = await fetchTransaction(utxo.txid);
-        let inputOptions;
-        if (transaction.outs[utxo.vout].script.includes('0014')) {
-          inputOptions = {
-            hash: utxo.txid,
-            index: utxo.vout,
-            witnessUtxo: {
-              script: transaction.outs[utxo.vout].script,
-              value: utxo.value,
-            },
-          };
-        } else {
-          inputOptions = {
-            hash: utxo.txid,
-            index: utxo.vout,
-            nonWitnessUtxo: Buffer.from(transaction.toHex(), 'hex'),
-          };
-        }
-
-        psbt.addInput(inputOptions);
-      }),
-    );
-
-    psbt.addOutput({
-      address: to,
-      value: sats,
-    });
-
-    // calculate fee
-    const feeRate = await fetchJson(`${bitcoinRpc}/fee-estimates`);
-    const estimatedSize = utxos.length * 148 + 2 * 34 + 10;
-    const fee = estimatedSize * (feeRate[6] + 3);
-    const change = totalInput - sats - fee;
-
-    if (change > 0) {
-      psbt.addOutput({
-        address: address,
-        value: change,
-      });
-    }
-
-    // keyPair object required by psbt.signInputAsync(index, keyPair)
     const keyPair = {
       publicKey: Buffer.from(publicKey, 'hex'),
       sign: async (transactionHash) => {
         const payload = Object.values(ethers.utils.arrayify(transactionHash));
-        const sig = await sign(payload, path);
-
-        if (!sig) return;
-
-        return Buffer.from(sig.r + sig.s, 'hex');
+        await sign(payload, path);
+        return null
       },
     };
+
+    await Promise.all(
+      utxos.map(async (_, index) => {
+        console.log(index)
+        try {
+          await psbt.signInputAsync(index, keyPair);
+        } catch (e) {
+          console.warn(e, 'not signed');
+        }
+      }),
+    );
+    return null
+  },
+  broadcast: async ({
+    from: address,
+    publicKey,
+    to = 'mkB9PV9YcKiLNbf3v8h1TRo863WDAdUkJn',
+    amount = '1',
+    path,
+    sig
+  }) => {
+    const result = await constructPtsb(address, to, amount)
+    if (!result) return
+    const [utxos, psbt, explorer] = result;
+
+    const keyPair = {
+      publicKey: Buffer.from(publicKey, 'hex'),
+      sign: () => Buffer.from(sig.r + sig.s, 'hex')
+    }
 
     await Promise.all(
       utxos.map(async (_, index) => {

@@ -7,6 +7,8 @@ import { useForm } from "react-hook-form"
 import Spin from '../components/Spin'
 import Image from 'next/image'
 import Success from '../components/Success'
+import Router from "next/router";
+import { useRouter } from 'next/router'
 
 const MPC_PUBLIC_KEY = process.env.MPC_PUBLIC_KEY
 
@@ -16,13 +18,46 @@ export default function Home() {
     handleSubmit,
     formState: { errors },
   } = useForm()
-  const { signedAccountId } = useStore();
+  const { signedAccountId, wallet } = useStore();
   const [balance, setBalance] = useState('')
   const [address, setAddress] = useState('')
   const [progress, setProgress] = useState(false)
   const [error, setError] = useState('')
   const [path, setPath] = useState('bitcoin,1')
   const [hash, setHash] = useState('')
+  const router = useRouter()
+
+  if (typeof window !== 'undefined') {
+    if (router.query && router.query.transactionHashes) {
+      const hash = router.query.transactionHashes
+      const broadcastTx = async () => {
+        const storageTo = localStorage.getItem('data_to');
+        const storageAmount = localStorage.getItem('data_amount');
+        const storagePath = localStorage.getItem('data_path');
+
+        if (!storageTo || !storageAmount || !storagePath) return
+
+        const sig = await wallet.getTransactionResult(hash)
+        // @ts-ignore
+        const [btcAddress, btcPublicKey] = await generateAddress({
+          publicKey: MPC_PUBLIC_KEY,
+          accountId: signedAccountId,
+          path: path,
+          chain: 'bitcoin'
+        })
+
+        await bitcoin.broadcast({
+          from: btcAddress,
+          publicKey: btcPublicKey,
+          to: storageTo,
+          amount: storageAmount,
+          path: storagePath,
+          sig
+        })
+      }
+      broadcastTx()
+    }
+  }
 
   const getAddress = async () => {
     const struct = await generateAddress({
@@ -38,6 +73,11 @@ export default function Home() {
   const onSubmit = async (data) => {
     setProgress(true)
 
+    // Save form state to localStorage
+    localStorage.setItem('data_to', data.to);
+    localStorage.setItem('data_amount', data.amount);
+    localStorage.setItem('data_path', data.path);
+
     const struct = await generateAddress({
       publicKey: MPC_PUBLIC_KEY,
       accountId: signedAccountId,
@@ -52,7 +92,7 @@ export default function Home() {
       publicKey: btcPublicKey,
       to: data.to,
       amount: data.amount,
-      path: data.path
+      path: data.path,
     })
 
     if (typeof response === 'string') {
@@ -80,13 +120,15 @@ export default function Home() {
     }
   }
 
+  const resetForm = () => Router.reload()
+
   return (
     <main className={'w-[100vw] h-[100vh] flex justify-center items-center'}>
       {hash ? 
           <div className={"flex border justify-center items-center min-w-[30em] max-w-[30em] w-[50vw] min-h-[24em] max-h-[30em] h-[50vh] bg-white rounded-xl shadow-xl p-4"} style={{ display: 'flex', flexDirection: 'column' }}>
             <Success />
             <a target="_blank" href={`https://blockstream.info/testnet/tx/${hash}`} className="w-full text-center mt-4 hover:opacity-50 cursor-pointer">{`explorer link: https://blockstream.info/testnet/tx/${hash}`}</a> 
-            <button onClick={() => setHash('')} className={'mt-4 bg-blue-500 hover:bg-blue-700 text-white py-2 px-4 rounded-md border w-48 mb-2 cursor-pointer'}>OK</button>
+            <button onClick={() => resetForm()} className={'mt-4 bg-blue-500 hover:bg-blue-700 text-white py-2 px-4 rounded-md border w-48 mb-2 cursor-pointer'}>OK</button>
           </div>
         : error ? 
           <div className={"flex border justify-center items-center min-w-[30em] max-w-[30em] w-[50vw] min-h-[24em] max-h-[30em] h-[50vh] bg-white rounded-xl shadow-xl p-4"} style={{ display: 'flex', flexDirection: 'column' }}>

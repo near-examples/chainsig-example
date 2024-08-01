@@ -1,11 +1,12 @@
 import * as nearAPI from 'near-api-js';
 import BN from 'bn.js';
 
-const { Near, Account, keyStores } = nearAPI;
+const { Near, Account, keyStores, WalletConnection } = nearAPI;
 
 // const contractId = "v5.multichain-mpc-dev.testnet"
 // const contractId = "multichain-testnet-2.testnet"
-const contractId = 'v2.multichain-mpc.testnet'
+// const contractId = 'v2.multichain-mpc.testnet'
+const contractId = "v1.signer-prod.testnet"
 
 export async function sign(payload, path) {
   const keyStore = new keyStores.BrowserLocalStorageKeyStore();
@@ -19,21 +20,24 @@ export async function sign(payload, path) {
   };
   const near = new Near(config);
 
-  const localStorage = JSON.parse(near.config.keyStore.localStorage.near_app_wallet_auth_key)
-  const accountId = localStorage.accountId
+  const wallet = new WalletConnection(near, 'my-app');
+  const account = wallet.account();
 
-  const account = new Account(near.connection, accountId);
+  // Ensure the user is signed in
+  if (!wallet.isSignedIn()) {  
+    // @ts-ignore
+    wallet.requestSignIn(contractId);
+    return;
+  }
 
   const args = {
-    payload,
-    path,
-    key_version: 0,
-    rlp_payload: undefined,
+    request: {
+      payload: payload.reverse(), // ensure payload is reversed as needed
+      path,
+      key_version: 0,
+    },
   };
-  let attachedDeposit = '0';
-
-  // may change in the future // if stops working try removing
-  args.payload = payload.reverse();
+  const attachedDeposit = new BN('1'); // 1 yoctoNEAR
 
   console.log(
     'sign payload',
@@ -48,10 +52,12 @@ export async function sign(payload, path) {
       contractId,
       methodName: 'sign',
       args,
-      gas: new BN('300000000000000'),
-      attachedDeposit,
+      gas: new BN('250000000000000'), // 250 Tgas
+      attachedDeposit, // Ensure attachedDeposit is correctly set
     });
+
   } catch (e) {
+    console.log(e)
     return console.log('error signing', JSON.stringify(e));
   }
 

@@ -11,7 +11,6 @@ interface BackgroundPatternProps {
 
 const BackgroundPattern = ({ fill= "#6CE89E", style, spacing=40, sizing=10, className }: BackgroundPatternProps) => {
   const containerRef = useRef<HTMLDivElement>(null); // Use useRef to access the DOM element
-  console.log(sizing)
   useEffect(() => {
     if (containerRef.current) { // Check if the ref's current property is not null
       const pattern = createPlusSignPattern();

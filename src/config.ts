@@ -1,8 +1,8 @@
 const contractPerNetwork = {
   mainnet: 'hello.near-examples.near',
   // testnet: 'v2.multichain-mpc.testnet',
-  // testnet: 'v1.signer-dev.testnet'
-  testnet: 'v1.signer-prod.testnet'
+  testnet: 'v1.signer-dev.testnet'
+  // testnet: 'v1.signer-prod.testnet'
 };
 
 const componentsPerNetwork = {

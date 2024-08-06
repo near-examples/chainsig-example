@@ -27,37 +27,46 @@ export default function Home() {
   const [hash, setHash] = useState('')
   const router = useRouter()
 
-  if (typeof window !== 'undefined') {
-    if (router.query && router.query.transactionHashes) {
-      const hash = router.query.transactionHashes
-      const broadcastTx = async () => {
-        const storageTo = localStorage.getItem('data_to');
-        const storageAmount = localStorage.getItem('data_amount');
-        const storagePath = localStorage.getItem('data_path');
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      if (router.query && router.query.transactionHashes) {
+        const hash = router.query.transactionHashes
+        const broadcastTx = async () => {
+          const storageTo = localStorage.getItem('data_to');
+          const storageAmount = localStorage.getItem('data_amount');
+          const storagePath = localStorage.getItem('data_path');
+  
+          if (!storageTo || !storageAmount || !storagePath) return
+  
+          const sig = await wallet.getTransactionResult(hash)
+          // @ts-ignore
+          const struct = await generateAddress({
+            publicKey: MPC_PUBLIC_KEY,
+            accountId: signedAccountId,
+            path: path,
+            chain: 'bitcoin'
+          })
+  
+          const btcAddress = struct.address
+          const btcPublicKey = struct.publicKey
+  
+          await bitcoin.broadcast({
+            from: btcAddress,
+            publicKey: btcPublicKey,
+            to: storageTo,
+            amount: storageAmount,
+            path: storagePath,
+            sig
+          })
 
-        if (!storageTo || !storageAmount || !storagePath) return
-
-        const sig = await wallet.getTransactionResult(hash)
-        // @ts-ignore
-        const [btcAddress, btcPublicKey] = await generateAddress({
-          publicKey: MPC_PUBLIC_KEY,
-          accountId: signedAccountId,
-          path: path,
-          chain: 'bitcoin'
-        })
-
-        await bitcoin.broadcast({
-          from: btcAddress,
-          publicKey: btcPublicKey,
-          to: storageTo,
-          amount: storageAmount,
-          path: storagePath,
-          sig
-        })
+          localStorage.removeItem('data_to');
+          localStorage.removeItem('data_amount');
+          localStorage.removeItem('data_path');
+        }
+        broadcastTx()
       }
-      broadcastTx()
-    }
-  }
+    }  
+  }, [])
 
   const getAddress = async () => {
     const struct = await generateAddress({

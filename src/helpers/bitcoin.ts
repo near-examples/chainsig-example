@@ -156,9 +156,22 @@ const bitcoin = {
     if (!result) return
     const [utxos, psbt, explorer] = result;
 
+    /* 
+      sig object format on v1.signer-dev.testnet 
+      {
+          "big_r": {
+              "affine_point": "0326A048E88A80CCE88AA8D6D529C00E287B8E92A38338F365D32D9A4B74E4C9AF"
+          },
+          "s": {
+              "scalar": "618E0304CE060E5DE4F2EF978E7E7F72B0C313540C1B59B5E3F3B260B163CEF0"
+          },
+          "recovery_id": 1
+      }
+    */
+
     const keyPair = {
       publicKey: Buffer.from(publicKey, 'hex'),
-      sign: () => Buffer.from(sig.r + sig.s, 'hex')
+      sign: () => Buffer.from(sig.big_r.affine_point + sig.s.scalar, 'hex') // this is breaking, not sure why
     }
 
     await Promise.all(

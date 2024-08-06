@@ -200,6 +200,7 @@ const bitcoin = {
         console.log(
           'NOTE: it might take a minute for transaction to be included in mempool',
         );
+
         return hash
       } else {
         return res

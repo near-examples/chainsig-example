@@ -39,6 +39,7 @@ export default function Home() {
           if (!storageTo || !storageAmount || !storagePath) return
   
           const sig = await wallet.getTransactionResult(hash)
+
           // @ts-ignore
           const struct = await generateAddress({
             publicKey: MPC_PUBLIC_KEY,

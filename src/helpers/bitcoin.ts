@@ -5,7 +5,7 @@ import * as bitcoinJs from 'bitcoinjs-lib';
 
 const constructPtsb = async (
   address,
-  to = 'mkB9PV9YcKiLNbf3v8h1TRo863WDAdUkJn',
+  to = 'mkLH2BUnuXarCx4AoqdpQnNDAQa9qVHUEf',
   amount = '1',
 ): Promise<[any[], any, string] | void> => {
   if (!address) return console.log('must provide a sending address');
@@ -115,7 +115,7 @@ const bitcoin = {
   send: async ({
     from: address,
     publicKey,
-    to = 'mkB9PV9YcKiLNbf3v8h1TRo863WDAdUkJn',
+    to = 'mkLH2BUnuXarCx4AoqdpQnNDAQa9qVHUEf',
     amount = '1',
     path,
   }) => {
@@ -147,7 +147,7 @@ const bitcoin = {
   broadcast: async ({
     from: address,
     publicKey,
-    to = 'mkB9PV9YcKiLNbf3v8h1TRo863WDAdUkJn',
+    to = 'mkLH2BUnuXarCx4AoqdpQnNDAQa9qVHUEf',
     amount = '1',
     path,
     sig
@@ -171,12 +171,26 @@ const bitcoin = {
 
     const keyPair = {
       publicKey: Buffer.from(publicKey, 'hex'),
-      sign: () => Buffer.from(sig.big_r.affine_point + sig.s.scalar, 'hex') // this is breaking, not sure why
-    }
-
+      sign: () => {    
+        const r = sig.big_r.affine_point;
+        const s = sig.s.scalar;
+    
+        if (r.length !== 66 || s.length !== 64) {
+          throw new Error('Invalid signature length');
+        }
+    
+        // Create a 64-byte signature buffer by concatenating r and s
+        const signature = Buffer.concat([
+          Buffer.from(r.slice(2), 'hex'), // slice off the '02' prefix for the affine point
+          Buffer.from(s, 'hex'),
+        ]);
+    
+        return signature; // This returns the 64-byte signature
+      },
+    };
+    
     await Promise.all(
       utxos.map(async (_, index) => {
-        console.log(index)
         try {
           await psbt.signInputAsync(index, keyPair);
         } catch (e) {

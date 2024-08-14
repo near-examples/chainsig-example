@@ -6,7 +6,8 @@ const { Near, Account, keyStores, WalletConnection } = nearAPI;
 // const contractId = "v5.multichain-mpc-dev.testnet"
 // const contractId = "multichain-testnet-2.testnet"
 // const contractId = 'v2.multichain-mpc.testnet'
-const contractId = "v1.signer-dev.testnet"
+// const contractId = "v1.signer-dev.testnet"
+const contractId = process.env.MPC_CONTRACT_ID
 
 export async function sign(payload, path) {
   const keyStore = new keyStores.BrowserLocalStorageKeyStore();

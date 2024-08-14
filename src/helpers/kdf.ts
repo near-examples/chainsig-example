@@ -102,8 +102,8 @@ async function uncompressedHexPointToBtcAddress(publicKeyHex, networkByte) {
 export async function generateAddress({
   publicKey,
   accountId,
-  path = 'bitcoin,1',
-  chain = 'bitcoin'
+  path,
+  chain
 }) {
   let childPublicKey = await deriveChildPublicKey(
     najPublicKeyStrToUncompressedHexPoint(publicKey),

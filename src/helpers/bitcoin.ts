@@ -5,8 +5,8 @@ import * as bitcoinJs from 'bitcoinjs-lib';
 
 const constructPtsb = async (
   address,
-  to = 'mkLH2BUnuXarCx4AoqdpQnNDAQa9qVHUEf',
-  amount = '1',
+  to ,
+  amount,
 ): Promise<[any[], any, string] | void> => {
   if (!address) return console.log('must provide a sending address');
   const { getBalance, explorer } = bitcoin;
@@ -115,8 +115,8 @@ const bitcoin = {
   send: async ({
     from: address,
     publicKey,
-    to = 'mkLH2BUnuXarCx4AoqdpQnNDAQa9qVHUEf',
-    amount = '1',
+    to,
+    amount,
     path,
   }) => {
     const result = await constructPtsb(address, to, amount)
@@ -147,8 +147,8 @@ const bitcoin = {
   broadcast: async ({
     from: address,
     publicKey,
-    to = 'mkLH2BUnuXarCx4AoqdpQnNDAQa9qVHUEf',
-    amount = '1',
+    to,
+    amount,
     path,
     sig
   }) => {
@@ -171,24 +171,26 @@ const bitcoin = {
 
     const keyPair = {
       publicKey: Buffer.from(publicKey, 'hex'),
-      sign: () => {    
+      sign: (transactionHash) => {    
         const r = sig.big_r.affine_point;
         const s = sig.s.scalar;
-    
+
         if (r.length !== 66 || s.length !== 64) {
           throw new Error('Invalid signature length');
         }
-    
+
+        console.log('!L!L!L', r)
         // Create a 64-byte signature buffer by concatenating r and s
         const signature = Buffer.concat([
           Buffer.from(r.slice(2), 'hex'), // slice off the '02' prefix for the affine point
           Buffer.from(s, 'hex'),
         ]);
-    
-        return signature; // This returns the 64-byte signature
+
+        // Ensure that the signature returned is exactly 64 bytes
+        return signature;
       },
     };
-    
+
     await Promise.all(
       utxos.map(async (_, index) => {
         try {

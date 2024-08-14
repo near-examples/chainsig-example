@@ -27,7 +27,7 @@ export default function Home() {
   const [hash, setHash] = useState('')
   const router = useRouter()
 
-  useEffect(() => {
+  // useEffect(() => {
     if (typeof window !== 'undefined') {
       if (router.query && router.query.transactionHashes) {
         const hash = router.query.transactionHashes
@@ -60,14 +60,14 @@ export default function Home() {
             sig
           })
 
-          localStorage.removeItem('data_to');
-          localStorage.removeItem('data_amount');
-          localStorage.removeItem('data_path');
+          // localStorage.removeItem('data_to');
+          // localStorage.removeItem('data_amount');
+          // localStorage.removeItem('data_path');
         }
         broadcastTx()
       }
     }  
-  }, [])
+  // }, [])
 
   const getAddress = async () => {
     const struct = await generateAddress({

@@ -1,7 +1,7 @@
 import React from 'react';
 import { useStore } from "../layout";
-import { generateAddress, generateBtcAddress } from '../helpers/kdf'
-import { bitcoin, recoverPubkeyFromSignature } from '../helpers/bitcoin'
+import { generateBtcAddress } from '../helpers/kdf'
+import { bitcoin } from '../helpers/bitcoin'
 import { useState, useEffect } from 'react'
 import { useForm } from "react-hook-form"
 import Spin from '../components/Spin'
@@ -11,7 +11,7 @@ import Router from "next/router";
 import { useRouter } from 'next/router'
 
 const MPC_PUBLIC_KEY = process.env.MPC_PUBLIC_KEY
-console.log(MPC_PUBLIC_KEY)
+
 export default function Home() {
   const {
     register,
@@ -40,7 +40,6 @@ export default function Home() {
   
           const sig = await wallet.getTransactionResult(hash)
 
-          console.log('sig', sig)
           // @ts-ignore
           const struct = await generateBtcAddress({
             publicKey: MPC_PUBLIC_KEY,
@@ -57,12 +56,9 @@ export default function Home() {
           const response: string | void | Response = await bitcoin.broadcast({
             from: btcAddress,
             publicKey: btcPublicKey,
-            // to: storageTo,
-            // amount: storageAmount,
-            // path: storagePath,
-            to: 'mjPHKrvgP4pjK2bq6qfaUtnu8GUzQJqcev',
-            amount: '1',
-            path: 'bitcoin,1',
+            to: storageTo,
+            amount: storageAmount,
+            path: storagePath,
             sig
           })
 
@@ -105,18 +101,12 @@ export default function Home() {
     const btcAddress = struct.address
     const btcPublicKey = struct.publicKey
 
-    console.log('onSubmit btcPublicKey', btcPublicKey)
-
-
     const response: string | void | Response = await bitcoin.send({
       from: btcAddress,
       publicKey: btcPublicKey,
-      // to: data.to,
-      // amount: data.amount,
-      // path: data.path,
-      to: 'mjPHKrvgP4pjK2bq6qfaUtnu8GUzQJqcev',
-      amount: '1',
-      path: 'bitcoin,1',
+      to: data.to,
+      amount: data.amount,
+      path: data.path,
     })
 
     if (typeof response === 'string') {

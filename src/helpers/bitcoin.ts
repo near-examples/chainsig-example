@@ -3,54 +3,19 @@ import { fetchJson } from './utils';
 import { sign } from './near';
 import * as bitcoinJs from 'bitcoinjs-lib';
 const secp256k1 = require('secp256k1')
-// function convertToDER(r, s) {
-//   let rBuf = Buffer.from(r, 'hex');
-//   let sBuf = Buffer.from(s, 'hex');
 
-//   // Add padding if necessary to ensure r and s are 32 bytes
-//   if (rBuf.length > 32) {
-//     rBuf = rBuf.slice(rBuf.length - 32);
-//   } else if (rBuf.length < 32) {
-//     const pad = Buffer.alloc(32 - rBuf.length, 0);
-//     rBuf = Buffer.concat([pad, rBuf]);
-//   }
-
-//   if (sBuf.length > 32) {
-//     sBuf = sBuf.slice(sBuf.length - 32);
-//   } else if (sBuf.length < 32) {
-//     const pad = Buffer.alloc(32 - sBuf.length, 0);
-//     sBuf = Buffer.concat([pad, sBuf]);
-//   }
-
-//   // Direct concatenation for raw signature (64 bytes)
-//   const rawSignature = Buffer.concat([rBuf, sBuf]);
-
-//   // Return raw signature if required by the signing function
-//   if (rawSignature.length === 64) {
-//     return rawSignature.toString('hex');
-//   }
-
-//   // DER encode the r and s if necessary (not typical for Bitcoin's signature)
-//   let rEncoded = rBuf;
-//   if (rEncoded[0] & 0x80) {
-//     rEncoded = Buffer.concat([Buffer.from([0x00]), rEncoded]);
-//   }
-//   rEncoded = Buffer.concat([Buffer.from([0x02, rEncoded.length]), rEncoded]);
-
-//   let sEncoded = sBuf;
-//   if (sEncoded[0] & 0x80) {
-//     sEncoded = Buffer.concat([Buffer.from([0x00]), sEncoded]);
-//   }
-//   sEncoded = Buffer.concat([Buffer.from([0x02, sEncoded.length]), sEncoded]);
-
-//   const derEncoded = Buffer.concat([
-//     Buffer.from([0x30, rEncoded.length + sEncoded.length]),
-//     rEncoded,
-//     sEncoded,
-//   ]);
-
-//   return derEncoded.toString('hex');
-// }
+/* 
+  sig object format on v1.signer-dev.testnet 
+  {
+      "big_r": {
+          "affine_point": "0326A048E88A80CCE88AA8D6D529C00E287B8E92A38338F365D32D9A4B74E4C9AF"
+      },
+      "s": {
+          "scalar":       "618E0304CE060E5DE4F2EF978E7E7F72B0C313540C1B59B5E3F3B260B163CEF0"
+      },
+      "recovery_id": 1
+  }
+*/
 
 const constructPsbt = async (
   address,
@@ -95,7 +60,6 @@ const constructPsbt = async (
           hash: utxo.txid,
           index: utxo.vout,
           nonWitnessUtxo: Buffer.from(nonWitnessUtxo, 'hex'), // Provide the full transaction hex
-          // nonWitnessUtxo,
           // sequence: 4294967295, // Enables RBF
         };
       } else if (scriptHex.startsWith('0014')) {
@@ -156,8 +120,6 @@ const constructPsbt = async (
   return [utxos, psbt, explorer];
 };
 
-
-
 export const bitcoin = {
   name: 'Bitcoin Testnet',
   currency: 'sats',
@@ -175,10 +137,7 @@ export const bitcoin = {
         vout: utxo.vout,
         value: utxo.value,
       }));
-      // ONLY RETURNING AND SIGNING LARGEST UTXO
-      // WHY?
-      // For convenience in client side, this will only require 1 Near signature for 1 Bitcoin TX.
-      // Solutions for signing multiple UTXOs using MPC with a single Near TX are being worked on.
+
       let maxValue = 0;
       utxos.forEach((utxo) => {
         if (utxo.value > maxValue) maxValue = utxo.value;
@@ -207,30 +166,17 @@ export const bitcoin = {
   }) => {
     const result = await constructPsbt(address, to, amount)
     if (!result) return
-    const [utxos, psbt] = result;
+    const [psbt] = result;
 
     const keyPair = {
       publicKey: Buffer.from(publicKey, 'hex'),
       sign: async (transactionHash) => {
         const payload = Object.values(ethers.utils.arrayify(transactionHash));
         await sign(payload, path);
-
-        return null
       },
     };
 
     await psbt.signAllInputsAsync(keyPair)
-
-    // await Promise.all(
-    //   utxos.map(async (_, index) => {
-    //     try {
-    //       await psbt.signInputAsync(index, keyPair);
-    //     } catch (e) {
-    //       console.warn(e, 'not signed');
-    //     }
-    //   }),
-    // );
-    return null
   },
   broadcast: async ({
     from: address,
@@ -244,19 +190,6 @@ export const bitcoin = {
     if (!result) return
     const [utxos, psbt, explorer] = result;
 
-    /* 
-      sig object format on v1.signer-dev.testnet 
-      {
-          "big_r": {
-              "affine_point": "0326A048E88A80CCE88AA8D6D529C00E287B8E92A38338F365D32D9A4B74E4C9AF"
-          },
-          "s": {
-              "scalar":       "618E0304CE060E5DE4F2EF978E7E7F72B0C313540C1B59B5E3F3B260B163CEF0"
-          },
-          "recovery_id": 1
-      }
-    */
-
     const keyPair = {
       publicKey: Buffer.from(publicKey, 'hex'),
       sign: (transactionHash) => {
@@ -267,10 +200,9 @@ export const bitcoin = {
         if (sHex.length < 64) {
           sHex = sHex.padStart(64, '0');
         }
-        
+
         const rBuf = Buffer.from(rHex, 'hex');
         const sBuf = Buffer.from(sHex, 'hex');
-        // const v = Buffer.from('0', 'hex');
 
         // Combine r and s
         const rawSignature = Buffer.concat([rBuf, sBuf]);
@@ -292,7 +224,6 @@ export const bitcoin = {
       }),
     );
 
-    // await psbt.signAllInputsAsync(keyPair)
     psbt.finalizeAllInputs();
 
     // broadcast tx

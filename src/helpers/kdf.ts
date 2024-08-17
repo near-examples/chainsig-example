@@ -3,7 +3,6 @@ import { ec as EC } from 'elliptic';
 import { sha3_256 } from 'js-sha3';
 import hash from 'hash.js';
 import bs58check from 'bs58check';
-import keccak from 'keccak';
 
 export function najPublicKeyStrToUncompressedHexPoint(
   najPublicKeyStr: string
@@ -81,50 +80,3 @@ export async function generateBtcAddress({
     publicKey: childPublicKey
   };
 }
-
-
-function uncompressedHexPointToEvmAddress(uncompressedHexPoint) {
-  const address = keccak('keccak256')
-    .update(Buffer.from(uncompressedHexPoint.substring(2), 'hex'))
-    .digest('hex');
-
-  // Ethereum address is last 20 bytes of hash (40 characters), prefixed with 0x
-  return '0x' + address.substring(address.length - 40);
-}
-
-// export async function generateAddress({
-//   publicKey,
-//   accountId,
-//   path,
-//   chain
-// }) {
-//   let childPublicKey = await deriveChildPublicKey(
-//     najPublicKeyStrToUncompressedHexPoint(publicKey),
-//     accountId,
-//     path,
-//   );
-//   if (!chain) chain = 'ethereum';
-//   let address;
-//   switch (chain) {
-//     case 'ethereum':
-//       address = uncompressedHexPointToEvmAddress(childPublicKey);
-//       break;
-//     case 'btc':
-//       address = await uncompressedHexPointToBtcAddress(childPublicKey, Buffer.from([0x00]));
-//       break;
-//     case 'bitcoin':
-//       address = await generateBtcAddress({ publicKey, accountId, path, isTestnet: true });
-//       break;
-//     case 'dogecoin':
-//       address = await uncompressedHexPointToBtcAddress(
-//         childPublicKey,
-//         Buffer.from([0x71]),
-//       );
-//       break;
-//   }
-
-//   return {
-//     address,
-//     publicKey: childPublicKey,
-//   };
-// }

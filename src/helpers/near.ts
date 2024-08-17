@@ -33,7 +33,8 @@ export async function sign(payload, path) {
 
   const args = {
     request: {
-      payload: payload.reverse(), // ensure payload is reversed as needed
+      // payload: payload.reverse(), // ensure payload is reversed as needed
+      payload,
       path,
       key_version: 0,
     },
@@ -63,16 +64,16 @@ export async function sign(payload, path) {
   }
 
   // parse result into signature values we need r, s but we don't need first 2 bytes of r (y-parity)
-  if ('SuccessValue' in (res.status)) {
-    const successValue = (res.status).SuccessValue;
-    const decodedValue = Buffer.from(successValue, 'base64').toString('utf-8');
-    const parsedJSON = JSON.parse(decodedValue);
+  // if ('SuccessValue' in (res.status)) {
+  //   const successValue = (res.status).SuccessValue;
+  //   const decodedValue = Buffer.from(successValue, 'base64').toString('utf-8');
+  //   const parsedJSON = JSON.parse(decodedValue);
 
-    return {
-      r: parsedJSON[0].slice(2),
-      s: parsedJSON[1],
-    };
-  } else {
-    return console.log('error signing', JSON.stringify(res));
-  }
+  //   return {
+  //     r: parsedJSON[0].slice(2),
+  //     s: parsedJSON[1],
+  //   };
+  // } else {
+  //   return console.log('error signing', JSON.stringify(res));
+  // }
 }

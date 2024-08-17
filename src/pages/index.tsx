@@ -1,7 +1,7 @@
 import React from 'react';
 import { useStore } from "../layout";
-import { generateAddress } from '../helpers/kdf'
-import bitcoin from '../helpers/bitcoin'
+import { generateAddress, generateBtcAddress } from '../helpers/kdf'
+import { bitcoin, recoverPubkeyFromSignature } from '../helpers/bitcoin'
 import { useState, useEffect } from 'react'
 import { useForm } from "react-hook-form"
 import Spin from '../components/Spin'
@@ -11,7 +11,7 @@ import Router from "next/router";
 import { useRouter } from 'next/router'
 
 const MPC_PUBLIC_KEY = process.env.MPC_PUBLIC_KEY
-
+console.log(MPC_PUBLIC_KEY)
 export default function Home() {
   const {
     register,
@@ -28,7 +28,7 @@ export default function Home() {
   const router = useRouter()
 
   // useEffect(() => {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== 'undefined' && signedAccountId && wallet) {
       if (router.query && router.query.transactionHashes) {
         const hash = router.query.transactionHashes
         const broadcastTx = async () => {
@@ -40,41 +40,48 @@ export default function Home() {
   
           const sig = await wallet.getTransactionResult(hash)
 
+          console.log('sig', sig)
           // @ts-ignore
-          const struct = await generateAddress({
+          const struct = await generateBtcAddress({
             publicKey: MPC_PUBLIC_KEY,
             accountId: signedAccountId,
-            path: path,
-            chain: 'bitcoin'
+            path: 'bitcoin,1',
+            isTestnet: true
           })
-  
+
           const btcAddress = struct.address
           const btcPublicKey = struct.publicKey
-  
-          await bitcoin.broadcast({
+
+          console.log('on send btcPublicKey', Buffer.from(btcPublicKey, 'hex'))
+          
+          const response: string | void | Response = await bitcoin.broadcast({
             from: btcAddress,
             publicKey: btcPublicKey,
-            to: storageTo,
-            amount: storageAmount,
-            path: storagePath,
+            // to: storageTo,
+            // amount: storageAmount,
+            // path: storagePath,
+            to: 'mjPHKrvgP4pjK2bq6qfaUtnu8GUzQJqcev',
+            amount: '1',
+            path: 'bitcoin,1',
             sig
           })
 
+          console.log('response', response)
           // localStorage.removeItem('data_to');
           // localStorage.removeItem('data_amount');
           // localStorage.removeItem('data_path');
         }
         broadcastTx()
       }
-    }  
+    }
   // }, [])
 
   const getAddress = async () => {
-    const struct = await generateAddress({
+    const struct = await generateBtcAddress({
       publicKey: MPC_PUBLIC_KEY,
       accountId: signedAccountId,
       path: path,
-      chain: 'bitcoin'
+      isTestnet: true
     })
     setAddress(struct.address)
     return [struct.address, struct.publicKey]
@@ -88,21 +95,28 @@ export default function Home() {
     localStorage.setItem('data_amount', data.amount);
     localStorage.setItem('data_path', data.path);
 
-    const struct = await generateAddress({
+    const struct = await generateBtcAddress({
       publicKey: MPC_PUBLIC_KEY,
       accountId: signedAccountId,
-      path: data.path,
-      chain: 'bitcoin'
+      path: 'bitcoin,1',
+      isTestnet: true
     })
+
     const btcAddress = struct.address
     const btcPublicKey = struct.publicKey
+
+    console.log('onSubmit btcPublicKey', btcPublicKey)
+
 
     const response: string | void | Response = await bitcoin.send({
       from: btcAddress,
       publicKey: btcPublicKey,
-      to: data.to,
-      amount: data.amount,
-      path: data.path,
+      // to: data.to,
+      // amount: data.amount,
+      // path: data.path,
+      to: 'mjPHKrvgP4pjK2bq6qfaUtnu8GUzQJqcev',
+      amount: '1',
+      path: 'bitcoin,1',
     })
 
     if (typeof response === 'string') {

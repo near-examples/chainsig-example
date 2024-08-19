@@ -154,7 +154,8 @@ export default function Home() {
         ? <div className={"flex border justify-center items-center min-w-[30em] max-w-[30em] w-[50vw] min-h-[24em] max-h-[30em] h-[50vh] bg-white rounded-xl shadow-xl p-4 text-over"} style={{ display: 'flex', flexDirection: 'column' }}>
           <Success />
           <p>Explorer link:</p>
-          <p onClick={() => window.open(`https://blockstream.info/testnet/tx/${hash}`, '_blank')} className="w-full break-words cursor-pointer hover:opacity-50">{`https://blockstream.info/testnet/tx/${hash}`}</p> 
+          <p onClick={() => window.open(`https://blockstream.info/testnet/tx/${txHash}`, '_blank')} className="w-full break-words cursor-pointer hover:opacity-50">{`https://blockstream.info/testnet/tx/${txHash}`}</p> 
+          <p>NOTE: it might take a minute for transaction to be included in mempool</p>
           <button onClick={() => resetForm()} className={'mt-4 bg-blue-500 hover:bg-blue-700 text-white py-2 px-4 rounded-md border w-48 mb-2 cursor-pointer'}>OK</button>
         </div>
         : progress 
@@ -164,7 +165,7 @@ export default function Home() {
           </div>
         : hash
         ? <StepperModal broadcastTx={broadcastTx} reset={resetForm} />
-        : <div className={"flex border justify-center min-w-[30em] max-w-[30em] w-[50vw] min-h-[26em] max-h-[24em] h-[50vh] bg-white rounded-xl shadow-xl p-4"} style={{ display: 'flex', flexDirection: 'column' }}>
+        : <div className={"flex border justify-center min-w-[30em] max-w-[30em] w-[50vw] min-h-[28em] max-h-[24em] h-[50vh] bg-white rounded-xl shadow-xl p-4"} style={{ display: 'flex', flexDirection: 'column' }}>
           <p>{`Path:`}</p>
           <input className="border p-1 rounded bg-slate-700 text-white pl-4 w-1/3" defaultValue={'bitcoin,1'}  {...register("path")} onChange={(e) => setPath(e.target.value)} />
 
@@ -188,6 +189,8 @@ export default function Home() {
             {errors.exampleRequired && <span>This field is required</span>}
 
             <button className={'mt-4 bg-blue-500 hover:bg-blue-700 text-white py-2 px-4 rounded-md border w-48 mb-2 cursor-pointer'} type="submit">Send BTC</button>
+            <p className="w-full break-words cursor-pointer hover:opacity-50"onClick={() => window.open('https://coinfaucet.eu/en/btc-testnet/', '_blank')} 
+            >Testnet BTC Faucet</p>
           </form>
         </div>
       </div>}

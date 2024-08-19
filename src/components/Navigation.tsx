@@ -25,11 +25,13 @@ export const Navigation = () => {
   return (
     <nav className="flex w-full fixed bg-white">
       <div className="flex justify-between p-2 w-full shadow-lg">
-        <Link href="/" passHref legacyBehavior>
-          <a>
-            <Image priority src={Logo} alt="NEAR" width={30} height={24} className="d-inline-block align-text-top" />
-          </a>
-        </Link>
+        <div className='flex items-center' onClick={() => window.location.replace('/')}>
+          <Link href="/" passHref legacyBehavior>
+            <a>
+              <Image priority src={Logo} alt="NEAR" width={30} height={30} className="d-inline-block align-text-top" />
+            </a>
+          </Link>
+        </div>
         <div className='navbar-nav w-full flex justify-end'>
           <button className="bg-blue-500 hover:bg-blue-700 text-white py-2 px-4 rounded" onClick={action}> {label} </button>
         </div>

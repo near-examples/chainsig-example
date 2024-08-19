@@ -2,7 +2,7 @@ import { ethers } from 'ethers';
 import { fetchJson } from './utils';
 import { sign } from './near';
 import * as bitcoinJs from 'bitcoinjs-lib';
-const secp256k1 = require('secp256k1')
+import secp256k1 from 'secp256k1';
 
 /* 
   sig object format on v1.signer-dev.testnet 
@@ -29,7 +29,7 @@ const constructPsbt = async (
 
   // Get UTXOs
   const utxos = await getBalance({ address, getUtxos: true });
-  if (!utxos) return;
+  if (!utxos || utxos.length === 0) throw new Error('No utxos detected for address: ', address);
   
   // Check balance (TODO include fee in check)
   if (utxos[0].value < sats) {
@@ -157,7 +157,7 @@ export const bitcoin = {
       console.log('e', e)
     }
   },
-  send: async ({
+  getSignature: async ({
     from: address,
     publicKey,
     to,
@@ -166,7 +166,7 @@ export const bitcoin = {
   }) => {
     const result = await constructPsbt(address, to, amount)
     if (!result) return
-    const [psbt] = result;
+    const [utxos, psbt] = result;
 
     const keyPair = {
       publicKey: Buffer.from(publicKey, 'hex'),

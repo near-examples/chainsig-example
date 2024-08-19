@@ -7,9 +7,8 @@ import { useForm } from "react-hook-form"
 import Spin from '../components/Spin'
 import Image from 'next/image'
 import Success from '../components/Success'
-import Router from "next/router";
 import { useRouter } from 'next/router'
-
+import { StepperModal } from '../components/StepperModal'
 const MPC_PUBLIC_KEY = process.env.MPC_PUBLIC_KEY
 
 export default function Home() {
@@ -25,58 +24,71 @@ export default function Home() {
   const [error, setError] = useState('')
   const [path, setPath] = useState('bitcoin,1')
   const [hash, setHash] = useState('')
+  const [txHash, setTxHash] = useState('')
   const router = useRouter()
 
-  // useEffect(() => {
-    if (typeof window !== 'undefined' && signedAccountId && wallet) {
-      if (router.query && router.query.transactionHashes) {
-        const hash = router.query.transactionHashes
-        const broadcastTx = async () => {
-          const storageTo = localStorage.getItem('data_to');
-          const storageAmount = localStorage.getItem('data_amount');
-          const storagePath = localStorage.getItem('data_path');
-  
-          if (!storageTo || !storageAmount || !storagePath) return
-  
-          const sig = await wallet.getTransactionResult(hash)
+  useEffect(() => {
+    if (router.query && router.query.transactionHashes) {
+      const urlHash = router.query.transactionHashes
 
-          // @ts-ignore
-          const struct = await generateBtcAddress({
-            publicKey: MPC_PUBLIC_KEY,
-            accountId: signedAccountId,
-            path: 'bitcoin,1',
-            isTestnet: true
-          })
-
-          const btcAddress = struct.address
-          const btcPublicKey = struct.publicKey
-
-          console.log('on send btcPublicKey', Buffer.from(btcPublicKey, 'hex'))
-          
-          const response: string | void | Response = await bitcoin.broadcast({
-            from: btcAddress,
-            publicKey: btcPublicKey,
-            to: storageTo,
-            amount: storageAmount,
-            path: storagePath,
-            sig
-          })
-
-          console.log('response', response)
-          // localStorage.removeItem('data_to');
-          // localStorage.removeItem('data_amount');
-          // localStorage.removeItem('data_path');
-        }
-        broadcastTx()
-      }
+      setHash(String(urlHash))
     }
-  // }, [])
+  }, [router.query.transactionHashes])
+
+  const broadcastTx = async () => {
+    setProgress(true)
+
+    const storageTo = localStorage.getItem('data_to');
+    const storageAmount = localStorage.getItem('data_amount');
+    const storagePath = localStorage.getItem('data_path');
+
+    if (!storageTo || !storageAmount || !storagePath) return
+
+    const sig = await wallet.getTransactionResult(hash)
+
+    // @ts-ignore
+    const struct = await generateBtcAddress({
+      publicKey: MPC_PUBLIC_KEY,
+      accountId: signedAccountId,
+      path: storagePath,
+      isTestnet: true
+    })
+
+    const btcAddress = struct.address
+    const btcPublicKey = struct.publicKey
+
+    const response: string | void | Response = await bitcoin.broadcast({
+      from: btcAddress,
+      publicKey: btcPublicKey,
+      to: storageTo,
+      amount: storageAmount,
+      path: storagePath,
+      sig
+    })
+
+    if (typeof response === 'string') {
+      setTxHash(response)
+    } else {
+      response.text().then((text) => {
+        // Assuming the error message is in the response body as text
+        setError(text);
+      }).catch((error) => {
+        // In case of an error while reading the response
+        setError('An error occurred while processing the response');
+      });
+    }
+
+    localStorage.removeItem('data_to');
+    localStorage.removeItem('data_amount');
+    localStorage.removeItem('data_path');
+    setProgress(false)
+  }
 
   const getAddress = async () => {
     const struct = await generateBtcAddress({
       publicKey: MPC_PUBLIC_KEY,
       accountId: signedAccountId,
-      path: path,
+      path,
       isTestnet: true
     })
     setAddress(struct.address)
@@ -84,8 +96,6 @@ export default function Home() {
   }
 
   const onSubmit = async (data) => {
-    setProgress(true)
-
     // Save form state to localStorage
     localStorage.setItem('data_to', data.to);
     localStorage.setItem('data_amount', data.amount);
@@ -94,29 +104,20 @@ export default function Home() {
     const struct = await generateBtcAddress({
       publicKey: MPC_PUBLIC_KEY,
       accountId: signedAccountId,
-      path: 'bitcoin,1',
+      path,
       isTestnet: true
     })
 
     const btcAddress = struct.address
     const btcPublicKey = struct.publicKey
 
-    const response: string | void | Response = await bitcoin.send({
+    await bitcoin.getSignature({
       from: btcAddress,
       publicKey: btcPublicKey,
       to: data.to,
       amount: data.amount,
       path: data.path,
     })
-
-    if (typeof response === 'string') {
-      setHash(String(response))
-    } else if (response) {
-      const text = await response.text()
-      const jsonText = JSON.parse(text.split("error:")[1])
-      setError(jsonText.message)
-    }
-    setProgress(false)
   }
 
   useEffect(() => {
@@ -134,18 +135,12 @@ export default function Home() {
     }
   }
 
-  const resetForm = () => Router.reload()
+  const resetForm = () => window.location.replace('/');
 
   return (
     <main className={'w-[100vw] h-[100vh] flex justify-center items-center'}>
-      {hash ? 
-          <div className={"flex border justify-center items-center min-w-[30em] max-w-[30em] w-[50vw] min-h-[24em] max-h-[30em] h-[50vh] bg-white rounded-xl shadow-xl p-4"} style={{ display: 'flex', flexDirection: 'column' }}>
-            <Success />
-            <a target="_blank" href={`https://blockstream.info/testnet/tx/${hash}`} className="w-full text-center mt-4 hover:opacity-50 cursor-pointer">{`explorer link: https://blockstream.info/testnet/tx/${hash}`}</a> 
-            <button onClick={() => resetForm()} className={'mt-4 bg-blue-500 hover:bg-blue-700 text-white py-2 px-4 rounded-md border w-48 mb-2 cursor-pointer'}>OK</button>
-          </div>
-        : error ? 
-          <div className={"flex border justify-center items-center min-w-[30em] max-w-[30em] w-[50vw] min-h-[24em] max-h-[30em] h-[50vh] bg-white rounded-xl shadow-xl p-4"} style={{ display: 'flex', flexDirection: 'column' }}>
+      {error
+        ? <div className={"flex border justify-center items-center min-w-[30em] max-w-[30em] w-[50vw] min-h-[24em] max-h-[30em] h-[50vh] bg-white rounded-xl shadow-xl p-4"} style={{ display: 'flex', flexDirection: 'column' }}>
             <Image
               alt="Failure"
               src={'fail.svg'}
@@ -155,10 +150,20 @@ export default function Home() {
             <p className="w-full text-center">{error}</p> 
             <button onClick={() => setError('')} className={'mt-4 bg-blue-500 hover:bg-blue-700 text-white py-2 px-4 rounded-md border w-48 mb-2 cursor-pointer'}>OK</button>
           </div>
-        : progress ? 
-          <div className={"flex border justify-center items-center min-w-[30em] max-w-[30em] w-[50vw] min-h-[24em] max-h-[30em] h-[50vh] bg-white rounded-xl shadow-xl p-4"} style={{ display: 'flex', flexDirection: 'column' }}>
+        : txHash
+        ? <div className={"flex border justify-center items-center min-w-[30em] max-w-[30em] w-[50vw] min-h-[24em] max-h-[30em] h-[50vh] bg-white rounded-xl shadow-xl p-4 text-over"} style={{ display: 'flex', flexDirection: 'column' }}>
+          <Success />
+          <p>Explorer link:</p>
+          <p onClick={() => window.open(`https://blockstream.info/testnet/tx/${hash}`, '_blank')} className="w-full break-words cursor-pointer hover:opacity-50">{`https://blockstream.info/testnet/tx/${hash}`}</p> 
+          <button onClick={() => resetForm()} className={'mt-4 bg-blue-500 hover:bg-blue-700 text-white py-2 px-4 rounded-md border w-48 mb-2 cursor-pointer'}>OK</button>
+        </div>
+        : progress 
+        ? <div className={"flex border justify-center items-center min-w-[30em] max-w-[30em] w-[50vw] min-h-[26em] max-h-[24em] h-[50vh] bg-white rounded-xl shadow-xl p-4"} style={{ display: 'flex', flexDirection: 'column' }}>
+            <p></p>
             <Spin />
           </div>
+        : hash
+        ? <StepperModal broadcastTx={broadcastTx} reset={resetForm} />
         : <div className={"flex border justify-center min-w-[30em] max-w-[30em] w-[50vw] min-h-[26em] max-h-[24em] h-[50vh] bg-white rounded-xl shadow-xl p-4"} style={{ display: 'flex', flexDirection: 'column' }}>
           <p>{`Path:`}</p>
           <input className="border p-1 rounded bg-slate-700 text-white pl-4 w-1/3" defaultValue={'bitcoin,1'}  {...register("path")} onChange={(e) => setPath(e.target.value)} />

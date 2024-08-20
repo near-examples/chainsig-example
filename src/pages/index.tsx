@@ -9,6 +9,8 @@ import Image from 'next/image'
 import Success from '../components/Success'
 import { useRouter } from 'next/router'
 import { StepperModal } from '../components/StepperModal'
+import { convertBitcoin } from '../helpers/utils'
+
 const MPC_PUBLIC_KEY = process.env.MPC_PUBLIC_KEY
 
 export default function Home() {
@@ -18,7 +20,7 @@ export default function Home() {
     formState: { errors },
   } = useForm()
   const { signedAccountId, wallet } = useStore();
-  const [balance, setBalance] = useState('')
+  const [balance, setBalance] = useState('0')
   const [address, setAddress] = useState('')
   const [progress, setProgress] = useState(false)
   const [error, setError] = useState('')
@@ -96,9 +98,11 @@ export default function Home() {
   }
 
   const onSubmit = async (data) => {
+    const amountInSats = convertBitcoin(data.amount, 'sats')
+
     // Save form state to localStorage
     localStorage.setItem('data_to', data.to);
-    localStorage.setItem('data_amount', data.amount);
+    localStorage.setItem('data_amount', amountInSats);
     localStorage.setItem('data_path', data.path);
 
     const struct = await generateBtcAddress({
@@ -174,7 +178,7 @@ export default function Home() {
 
           <p onClick={() => checkBal()}>{`Balance:`}</p>
           <div className="flex justify-center items-center">
-            <input className="border p-1 rounded bg-slate-500 text-white pl-4 w-4/5 h-10 " defaultValue={balance} disabled />
+            <input className="border p-1 rounded bg-slate-500 text-white pl-4 w-4/5 h-10 " defaultValue={balance == '0' ? '0' : convertBitcoin(balance, 'btc')} disabled />
             <button onClick={() => checkBal()} className={'bg-blue-500 hover:bg-blue-700 text-white py-2 px-4 rounded border w-1/5 cursor-pointer h-10'}>Check</button>
           </div>
 

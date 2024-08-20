@@ -195,7 +195,7 @@ export const bitcoin = {
       sign: (transactionHash) => {
         const rHex = sig.big_r.affine_point.slice(2); // Remove the "03" prefix
         let sHex = sig.s.scalar;
-        console.log('signature', sig)
+
         // Pad s if necessary
         if (sHex.length < 64) {
           sHex = sHex.padStart(64, '0');
@@ -207,7 +207,10 @@ export const bitcoin = {
         // Combine r and s
         const rawSignature = Buffer.concat([rBuf, sBuf]);
 
-        recoverPubkeyFromSignature(transactionHash, rawSignature)
+        const recoveredPubkeys = recoverPubkeyFromSignature(transactionHash, rawSignature)
+        console.log(recoveredPubkeys, publicKey)
+
+        // if (recoveredPubkeys[0] !== publicKey && recoveredPubkeys[1] !== publicKey) throw new Error('Signature does not match provided public key')
 
         return rawSignature;
       },
@@ -285,6 +288,7 @@ async function fetchTransaction(transactionId) {
 }
 
 export const recoverPubkeyFromSignature = (transactionHash, rawSignature) => {
+  let pubkeys = [];
   [0,1].forEach(num => {
     const recoveredPubkey = secp256k1.recover(
       transactionHash, // 32 byte hash of message
@@ -293,5 +297,10 @@ export const recoverPubkeyFromSignature = (transactionHash, rawSignature) => {
       false, // true if you want result to be compressed (33 bytes), false if you want it uncompressed (65 bytes) this also is usually encoded in the base64 signature
     );
     console.log('recoveredPubkey', recoveredPubkey)
+    const buffer = Buffer.from(recoveredPubkey);
+    // Convert the Buffer to a hexadecimal string
+    const hexString = buffer.toString('hex');
+    pubkeys.push(hexString)
   })
+  return pubkeys
 }

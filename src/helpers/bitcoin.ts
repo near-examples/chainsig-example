@@ -1,6 +1,6 @@
 import { ethers } from 'ethers';
 import { fetchJson } from './utils';
-import { sign } from './near';
+import { sign, signX } from './near';
 import * as bitcoinJs from 'bitcoinjs-lib';
 import secp256k1 from 'secp256k1';
 
@@ -119,7 +119,6 @@ const constructPsbt = async (
   // Return the constructed PSBT and UTXOs for signing
   return [utxos, psbt, explorer];
 };
-
 export const bitcoin = {
   name: 'Bitcoin Testnet',
   currency: 'sats',
@@ -157,6 +156,40 @@ export const bitcoin = {
       console.log('e', e)
     }
   },
+  getAndBroadcastSignature: async ({
+    from: address,
+    publicKey,
+    to,
+    amount,
+    path,
+  }) => {
+    console.log('About to call getSignature...');
+    const sig = await bitcoin.getSignature({
+      from: address,
+      publicKey,
+      to,
+      amount,
+      path,
+    });
+  
+    // Check if the signature was successfully generated
+    if (!sig) {
+      console.error('Failed to generate signature');
+      return;
+    }
+
+    // @ts-ignore
+    const broadcastResult = await bitcoin.broadcast({
+      from: address,
+      publicKey: publicKey,
+      to,
+      amount,
+      path,
+      sig
+    });
+
+    return broadcastResult
+  },
   getSignature: async ({
     from: address,
     publicKey,
@@ -168,15 +201,26 @@ export const bitcoin = {
     if (!result) return
     const [utxos, psbt] = result;
 
+    let signature
     const keyPair = {
       publicKey: Buffer.from(publicKey, 'hex'),
       sign: async (transactionHash) => {
         const payload = Object.values(ethers.utils.arrayify(transactionHash));
-        await sign(payload, path);
+        signature = await sign(payload, path);
       },
     };
 
-    await psbt.signAllInputsAsync(keyPair)
+    try {
+      // Wait for the inputs to be signed
+      await psbt.signAllInputsAsync(keyPair);
+    } catch (e) {
+      console.error('Error signing inputs:', e);
+      // return;
+    }
+
+    console.log('Generated signature in getSignature:', signature);
+    console.log('Returning signature:', signature);
+    return signature;  // Return the generated signature
   },
   broadcast: async ({
     from: address,
@@ -186,6 +230,7 @@ export const bitcoin = {
     path,
     sig
   }) => {
+    console.log('broadcast, amount', amount)
     const result = await constructPsbt(address, to, amount)
     if (!result) return
     const [utxos, psbt, explorer] = result;

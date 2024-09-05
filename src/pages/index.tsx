@@ -70,6 +70,9 @@ export default function Home() {
 
     if (typeof response === 'string') {
       setTxHash(response)
+      localStorage.removeItem('data_to');
+      localStorage.removeItem('data_amount');
+      localStorage.removeItem('data_path');
     } else {
       response.text().then((text) => {
         // Assuming the error message is in the response body as text
@@ -80,9 +83,6 @@ export default function Home() {
       });
     }
 
-    localStorage.removeItem('data_to');
-    localStorage.removeItem('data_amount');
-    localStorage.removeItem('data_path');
     setProgress(false)
   }
 
@@ -100,11 +100,6 @@ export default function Home() {
   const onSubmit = async (data) => {
     const amountInSats = convertBitcoin(data.amount, 'sats')
 
-    // Save form state to localStorage
-    localStorage.setItem('data_to', data.to);
-    localStorage.setItem('data_amount', amountInSats);
-    localStorage.setItem('data_path', data.path);
-
     const struct = await generateBtcAddress({
       publicKey: MPC_PUBLIC_KEY,
       accountId: signedAccountId,
@@ -115,13 +110,43 @@ export default function Home() {
     const btcAddress = struct.address
     const btcPublicKey = struct.publicKey
 
-    await bitcoin.getSignature({
-      from: btcAddress,
-      publicKey: btcPublicKey,
-      to: data.to,
-      amount: data.amount,
-      path: data.path,
-    })
+    const walletId = localStorage.getItem('near-wallet-selector:selectedWalletId').replace(/['"]+/g, '')
+
+    if (walletId === "meteor-wallet") {
+      setProgress(true)
+      const txHash = await bitcoin.getAndBroadcastSignature({
+        from: btcAddress,
+        publicKey: btcPublicKey,
+        to: data.to,
+        amount: amountInSats,
+        path: data.path,
+      })
+      setProgress(false)
+      if (typeof txHash === 'string') {
+        // @ts-ignore
+        setTxHash(txHash)
+      } else {
+        txHash.text().then((text) => {
+          // Assuming the error message is in the response body as text
+          setError(text);
+        }).catch((error) => {
+          // In case of an error while reading the response
+          setError('An error occurred while processing the response');
+        });
+      }
+    } else {
+      localStorage.setItem('data_to', data.to);
+      localStorage.setItem('data_amount', amountInSats);
+      localStorage.setItem('data_path', data.path);
+  
+      await bitcoin.getSignature({
+        from: btcAddress,
+        publicKey: btcPublicKey,
+        to: data.to,
+        amount: amountInSats,
+        path: data.path,
+      })
+    }
   }
 
   useEffect(() => {
@@ -157,9 +182,9 @@ export default function Home() {
         : txHash
         ? <div className={"flex border justify-center items-center min-w-[30em] max-w-[30em] w-[50vw] min-h-[24em] max-h-[30em] h-[50vh] bg-white rounded-xl shadow-xl p-4 text-over"} style={{ display: 'flex', flexDirection: 'column' }}>
           <Success />
-          <p>Explorer link:</p>
-          <p onClick={() => window.open(`https://blockstream.info/testnet/tx/${txHash}`, '_blank')} className="w-full break-words cursor-pointer hover:opacity-50">{`https://blockstream.info/testnet/tx/${txHash}`}</p> 
-          <p>NOTE: it might take a minute for transaction to be included in mempool</p>
+          <p className='my-2'>Explorer link:</p>
+          <p className="w-full break-words cursor-pointer hover:opacity-50 my-2" onClick={() => window.open(`https://blockstream.info/testnet/tx/${txHash}`, '_blank')}>{`https://blockstream.info/testnet/tx/${txHash}`}</p> 
+          <p className='my-2'>NOTE: it might take a minute for transaction to be included in mempool</p>
           <button onClick={() => resetForm()} className={'mt-4 bg-blue-500 hover:bg-blue-700 text-white py-2 px-4 rounded-md border w-48 mb-2 cursor-pointer'}>OK</button>
         </div>
         : progress 
@@ -187,7 +212,7 @@ export default function Home() {
             <p>To Address:</p>
             <input className="border p-1 rounded bg-slate-700 text-white pl-4" placeholder="To Address" {...register("to")} />
 
-            <p>Value:</p>
+            <p>{'Value (in btc, not sats):'}</p>
             <input className="border p-1 rounded bg-slate-700 text-white pl-4" placeholder="Value" {...register("amount", { required: true })} />
 
             {errors.exampleRequired && <span>This field is required</span>}

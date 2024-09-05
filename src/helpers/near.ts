@@ -1,5 +1,6 @@
 import * as nearAPI from 'near-api-js';
 import BN from 'bn.js';
+import { useStore } from '../layout';
 
 const { Near, Account, keyStores, WalletConnection } = nearAPI;
 
@@ -7,15 +8,65 @@ const { Near, Account, keyStores, WalletConnection } = nearAPI;
 // const contractId = "multichain-testnet-2.testnet"
 // const contractId = 'v2.multichain-mpc.testnet'
 // const contractId = "v1.signer-dev.testnet"
-const contractId = process.env.MPC_CONTRACT_ID
 
+const contractId = process.env.MPC_CONTRACT_ID;
+
+let isSigning = false;
 export async function sign(payload, path) {
+  if (isSigning) {
+    console.warn('Sign function is already running.');
+    return;
+  }
+  isSigning = true;
+
+  const wallet = useStore.getState().wallet;
+
+  if (!wallet) {
+    console.error('Wallet is not initialized');
+    return;
+  }
+
+  // if (!wallet.isSignedIn()) {
+  //   wallet.signIn(contractId);
+  //   return;
+  // }
+
+  const args = {
+    request: {
+      payload,
+      path,
+      key_version: 0,
+    },
+  };
+  const attachedDeposit = '1'; // 1 yoctoNEAR
+
+  console.log('wtf ? ??? ? ? ? ? ')
+  let result
+  try {
+    result = await wallet.callMethod({
+      contractId,
+      method: 'sign',
+      args,
+      gas: '250000000000000', // 250 Tgas
+      deposit: attachedDeposit,
+    });
+    console.log('Transaction result:', result);
+  } catch (error) {
+    console.error('Error signing:', error);
+  }
+  console.log('result', result)
+  return result
+}
+
+export async function signX(payload, path) {
   const keyStore = new keyStores.BrowserLocalStorageKeyStore();
   const config = {
     networkId: 'testnet',
     keyStore: keyStore,
     nodeUrl: 'https://rpc.testnet.near.org',
-    walletUrl: 'https://testnet.mynearwallet.com/',
+    // walletUrl: 'https://testnet.mynearwallet.com/',
+    // walletUrl: 'https://testnet.meteorwallet.app/', // Change this to the Meteor Wallet URL
+
     helperUrl: 'https://helper.testnet.near.org',
     explorerUrl: 'https://testnet.nearblocks.io',
   };
@@ -24,6 +75,7 @@ export async function sign(payload, path) {
   const wallet = new WalletConnection(near, 'my-app');
   const account = wallet.account();
 
+  console.log(wallet, account)
   // Ensure the user is signed in
   if (!wallet.isSignedIn()) {  
     // @ts-ignore
@@ -33,7 +85,6 @@ export async function sign(payload, path) {
 
   const args = {
     request: {
-      // payload: payload.reverse(), // ensure payload is reversed as needed
       payload,
       path,
       key_version: 0,

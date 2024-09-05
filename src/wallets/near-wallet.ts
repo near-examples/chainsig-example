@@ -9,6 +9,8 @@ import { setupModal } from '@near-wallet-selector/modal-ui';
 import { setupWalletSelector } from '@near-wallet-selector/core';
 import { setupHereWallet } from '@near-wallet-selector/here-wallet';
 import { setupMyNearWallet } from '@near-wallet-selector/my-near-wallet';
+import { setupOKXWallet } from "@near-wallet-selector/okx-wallet";
+import { setupMeteorWallet } from "@near-wallet-selector/meteor-wallet";
 
 const THIRTY_TGAS = '30000000000000';
 const NO_DEPOSIT = '0';
@@ -39,7 +41,12 @@ export class Wallet {
     this.selector = setupWalletSelector({
       // @ts-ignore
       network: this.networkId,
-      modules: [setupMyNearWallet(), setupHereWallet()]
+      modules: [
+        setupMyNearWallet(),
+        setupHereWallet(),
+        setupOKXWallet(),
+        setupMeteorWallet()
+      ]
     });
 
     // @ts-ignore
@@ -47,7 +54,7 @@ export class Wallet {
     const isSignedIn = walletSelector.isSignedIn();
     const accountId = isSignedIn ? walletSelector.store.getState().accounts[0].accountId : '';
 
-    console.log('walletSelector', walletSelector)
+    console.log('walletSelector', walletSelector.store.observable, walletSelector, isSignedIn, accountId)
 
     walletSelector.store.observable
       .pipe(
@@ -134,6 +141,7 @@ export class Wallet {
       ],
     });
 
+    console.log('??? callmethod', outcome)
     return providers.getTransactionLastResult(outcome);
   };
 

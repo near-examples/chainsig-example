@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import * as ReactSwitch from '@radix-ui/react-switch';
 import { useStore } from "../layout";
 
@@ -13,7 +13,6 @@ const Switch = ({ setNetwork }) => {
         </label>
         <ReactSwitch.Root
           onCheckedChange={() => {
-            // setClicked(!clicked)
             setNetwork(networkId === 'testnet' ? 'mainnet' : 'testnet')
           }}
           className="w-[42px] h-[25px] bg-blackA6 rounded-full relative shadow-[0_2px_10px] shadow-blackA4 focus:shadow-[0_0_0_2px] focus:shadow-black data-[state=checked]:bg-black outline-none cursor-pointer"

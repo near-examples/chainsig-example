@@ -3,11 +3,13 @@ import React, { useEffect } from 'react';
 import { create as createStore } from 'zustand';
 import { Wallet } from "./wallets/near-wallet";
 import { Navigation } from "./components/Navigation";
-import { NetworkId, HelloNearContract } from "./config";
+import { getNearContract } from "./config";
 
 interface StoreState {
   wallet: Wallet | undefined;
   signedAccountId: string;
+  networkId: string;
+  setNetworkId: (networkId: string) => void;
   setWallet: (wallet: Wallet) => void;
   setSignedAccountId: (signedAccountId: string) => void;
 }
@@ -16,24 +18,26 @@ interface StoreState {
 export const useStore = createStore<StoreState>((set) => ({
   wallet: undefined,
   signedAccountId: '',
+  networkId: 'testnet',
+  setNetworkId: (networkId) => set({ networkId }),
   setWallet: (wallet) => set({ wallet }),
   setSignedAccountId: (signedAccountId) => set({ signedAccountId })
 }))
 
 export default function RootLayout({ children }) {
-  const { setWallet, setSignedAccountId } = useStore();
+  const { setWallet, setSignedAccountId, networkId } = useStore();
 
   useEffect(() => {
     // create wallet instance
-    const wallet = new Wallet({ createAccessKeyFor: HelloNearContract, networkId: NetworkId })
-    console.log(wallet)
+    const wallet = new Wallet({ createAccessKeyFor: getNearContract(networkId), networkId: networkId })
+
     wallet.startUp(setSignedAccountId);
     setWallet(wallet);
-  }, [])
+  }, [networkId])
 
   return (
     <>
-      <Navigation />
+      <Navigation />  
       {children}
     </>
   );

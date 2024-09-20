@@ -2,6 +2,7 @@
 const defaultTheme = require("tailwindcss/defaultTheme");
 const plugin = require("tailwindcss/plugin");
 const colors = require('tailwindcss/colors');
+const { blackA } = require('@radix-ui/colors');
 
 module.exports = {
   content: [
@@ -23,6 +24,7 @@ module.exports = {
         near: "#000",
         nearGreen: "#6CE89E",
         sky: colors.sky,
+        ...blackA,
       },
       textColor: (theme) => ({
         primary: theme("colors.gray.900"),

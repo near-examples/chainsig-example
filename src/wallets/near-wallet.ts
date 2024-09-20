@@ -54,8 +54,6 @@ export class Wallet {
     const isSignedIn = walletSelector.isSignedIn();
     const accountId = isSignedIn ? walletSelector.store.getState().accounts[0].accountId : '';
 
-    console.log('walletSelector', walletSelector.store.observable, walletSelector, isSignedIn, accountId)
-
     walletSelector.store.observable
       .pipe(
         // @ts-ignore
@@ -125,23 +123,56 @@ export class Wallet {
   callMethod = async ({ contractId, method, args = {}, gas = THIRTY_TGAS, deposit = NO_DEPOSIT }) => {
     // Sign a transaction with the "FunctionCall" action
     // @ts-ignore
-    const selectedWallet = await (await this.selector).wallet();
-    const outcome = await selectedWallet.signAndSendTransaction({
-      receiverId: contractId,
-      actions: [
-        {
-          type: 'FunctionCall',
-          params: {
-            methodName: method,
-            args,
-            gas,
-            deposit,
-          },
-        },
-      ],
-    });
+    const select = await this.selector
+    // @ts-ignore
+    const selectedWallet = await select.wallet();
 
-    console.log('??? callmethod', outcome)
+    if (!selectedWallet) {
+      console.error('No wallet selected or wallet initialization failed');
+      return;
+    }
+
+    let outcome
+    if (selectedWallet.id === 'okx-wallet') {
+      try {
+        // @ts-ignore
+        const response = await window.okxwallet.near.signAndSendTransaction({
+          receiverId: contractId,
+          actions: [
+            {
+                methodName: method,
+                args,
+                gas,
+                deposit,
+            },
+          ],
+        })
+        const sig = await this.getTransactionResult(response.txHash)
+        return sig
+      } catch(e) {
+        console.log('e', e)
+      }
+    } else {
+      try {
+        outcome = await selectedWallet.signAndSendTransaction({
+          receiverId: contractId,
+          actions: [
+            {
+              type: 'FunctionCall',
+              params: {
+                methodName: method,
+                args,
+                gas,
+                deposit,
+              },
+            },
+          ],
+        });    
+      } catch (e) {
+        console.log('e', e)
+      }  
+    }
+
     return providers.getTransactionLastResult(outcome);
   };
 

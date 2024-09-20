@@ -10,8 +10,8 @@ import Success from '../components/Success'
 import { useRouter } from 'next/router'
 import { StepperModal } from '../components/StepperModal'
 import { convertBitcoin } from '../helpers/utils'
-
-const MPC_PUBLIC_KEY = process.env.MPC_PUBLIC_KEY
+import { MPC_VARIABLE } from '../config'
+import Switch from '../components/Switch'
 
 export default function Home() {
   const {
@@ -19,7 +19,7 @@ export default function Home() {
     handleSubmit,
     formState: { errors },
   } = useForm()
-  const { signedAccountId, wallet } = useStore();
+  const { signedAccountId, wallet, networkId, setNetworkId } = useStore();
   const [balance, setBalance] = useState('0')
   const [address, setAddress] = useState('')
   const [progress, setProgress] = useState(false)
@@ -27,7 +27,12 @@ export default function Home() {
   const [path, setPath] = useState('bitcoin,1')
   const [hash, setHash] = useState('')
   const [txHash, setTxHash] = useState('')
+  const [MPC_PUBLIC_KEY, setMpcPublicKey] = useState(MPC_VARIABLE['MPC_PUBLIC_KEY_TESTNET'])
   const router = useRouter()
+
+  useEffect(() => {
+    setMpcPublicKey(MPC_VARIABLE[networkId === 'testnet' ? 'MPC_PUBLIC_KEY_TESTNET' : 'MPC_PUBLIC_KEY_MAINNET'])
+  }, [networkId])
 
   useEffect(() => {
     if (router.query && router.query.transactionHashes) {
@@ -53,7 +58,7 @@ export default function Home() {
       publicKey: MPC_PUBLIC_KEY,
       accountId: signedAccountId,
       path: storagePath,
-      isTestnet: true
+      isTestnet: networkId === 'testnet'
     })
 
     const btcAddress = struct.address
@@ -91,7 +96,7 @@ export default function Home() {
       publicKey: MPC_PUBLIC_KEY,
       accountId: signedAccountId,
       path,
-      isTestnet: true
+      isTestnet: networkId === 'testnet'
     })
     setAddress(struct.address)
     return [struct.address, struct.publicKey]
@@ -104,7 +109,7 @@ export default function Home() {
       publicKey: MPC_PUBLIC_KEY,
       accountId: signedAccountId,
       path,
-      isTestnet: true
+      isTestnet: networkId === 'testnet'
     })
 
     const btcAddress = struct.address
@@ -112,7 +117,7 @@ export default function Home() {
 
     const walletId = localStorage.getItem('near-wallet-selector:selectedWalletId').replace(/['"]+/g, '')
 
-    if (walletId === "meteor-wallet") {
+    if (walletId === "meteor-wallet" || walletId === 'okx-wallet') {
       setProgress(true)
       const txHash = await bitcoin.getAndBroadcastSignature({
         from: btcAddress,
@@ -123,16 +128,19 @@ export default function Home() {
       })
       setProgress(false)
       if (typeof txHash === 'string') {
-        // @ts-ignore
         setTxHash(txHash)
       } else {
-        txHash.text().then((text) => {
-          // Assuming the error message is in the response body as text
-          setError(text);
-        }).catch((error) => {
-          // In case of an error while reading the response
-          setError('An error occurred while processing the response');
-        });
+        if (txHash) {
+          txHash.text().then((text) => {
+            // Assuming the error message is in the response body as text
+            setError(text);
+          }).catch((error) => {
+            // In case of an error while reading the response
+            setError('An error occurred while processing the response');
+          });
+        } else {
+          setError('Something went wrong')
+        }
       }
     } else {
       localStorage.setItem('data_to', data.to);
@@ -151,7 +159,7 @@ export default function Home() {
 
   useEffect(() => {
     getAddress()
-  }, [signedAccountId, path, balance, error, hash])
+  }, [signedAccountId, path, balance, error, hash, MPC_PUBLIC_KEY])
 
   const checkBal = async () => {
     const response = await bitcoin.getBalance({
@@ -177,7 +185,7 @@ export default function Home() {
               height={200}
             />
             <p className="w-full text-center">{error}</p> 
-            <button onClick={() => setError('')} className={'mt-4 bg-blue-500 hover:bg-blue-700 text-white py-2 px-4 rounded-md border w-48 mb-2 cursor-pointer'}>OK</button>
+            <button onClick={() => resetForm()} className={'mt-4 bg-blue-500 hover:bg-blue-700 text-white py-2 px-4 rounded-md border w-48 mb-2 cursor-pointer'}>OK</button>
           </div>
         : txHash
         ? <div className={"flex border justify-center items-center min-w-[30em] max-w-[30em] w-[50vw] min-h-[24em] max-h-[30em] h-[50vh] bg-white rounded-xl shadow-xl p-4 text-over"} style={{ display: 'flex', flexDirection: 'column' }}>
@@ -194,10 +202,16 @@ export default function Home() {
           </div>
         : hash
         ? <StepperModal broadcastTx={broadcastTx} reset={resetForm} />
-        : <div className={"flex border justify-center min-w-[30em] max-w-[30em] w-[50vw] min-h-[28em] max-h-[24em] h-[50vh] bg-white rounded-xl shadow-xl p-4"} style={{ display: 'flex', flexDirection: 'column' }}>
-          <p>{`Path:`}</p>
-          <input className="border p-1 rounded bg-slate-700 text-white pl-4 w-1/3" defaultValue={'bitcoin,1'}  {...register("path")} onChange={(e) => setPath(e.target.value)} />
-
+        : <div className={"flex justify-center min-w-[30em] max-w-[30em] w-[50vw] min-h-[28em] max-h-[24em] h-[50vh] bg-white rounded-xl shadow-xl p-4"} style={{ display: 'flex', flexDirection: 'column' }}>
+            <p>{`Path:`}</p>
+          <div className='w-full flex'>
+            <div className='w-1/2'>
+              <input className="p-1 rounded bg-slate-700 text-white pl-4" defaultValue={'bitcoin,1'}  {...register("path")} onChange={(e) => setPath(e.target.value)} />
+            </div>
+            <div className='w-1/2 flex items-center justify-end'>
+              <Switch setNetwork={setNetworkId} />
+            </div>
+          </div>
           <p>{`Address:`}</p>
           <input className="border p-1 rounded bg-slate-500 text-white pl-4" defaultValue={address} disabled />
 

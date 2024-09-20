@@ -1,8 +1,9 @@
 import { ethers } from 'ethers';
 import { fetchJson } from './utils';
-import { sign, signX } from './near';
+import { sign } from './near';
 import * as bitcoinJs from 'bitcoinjs-lib';
 import secp256k1 from 'secp256k1';
+import { useStore } from '../layout';
 
 /* 
   sig object format on v1.signer-dev.testnet 
@@ -22,6 +23,9 @@ const constructPsbt = async (
   to,
   amount
 ) => {
+  const networkId = useStore.getState().networkId
+  const bitcoinRpc = `https://blockstream.info/${networkId === 'testnet' ? 'testnet' : ''}/api`;
+
   if (!address) return console.log('must provide a sending address');
   
   const { getBalance, explorer } = bitcoin;
@@ -36,7 +40,7 @@ const constructPsbt = async (
     return console.log('insufficient funds');
   }
 
-  const psbt = new bitcoinJs.Psbt({ network: bitcoinJs.networks.testnet });
+  const psbt = new bitcoinJs.Psbt({ network: networkId === 'testnet' ? bitcoinJs.networks.testnet : bitcoinJs.networks.bitcoin });
 
   let totalInput = 0;
   
@@ -95,7 +99,7 @@ const constructPsbt = async (
       psbt.addInput(inputOptions);
     })
   );
-
+  
   // Add output to the recipient
   psbt.addOutput({
     address: to,
@@ -124,9 +128,11 @@ export const bitcoin = {
   currency: 'sats',
   explorer: 'https://blockstream.info/testnet',
   getBalance: async ({ address, getUtxos = false }) => {
+    const networkId = useStore.getState().networkId
+
     try {
       const res = await fetchJson(
-        `https://blockstream.info/testnet/api/address/${address}/utxo`,
+        `https://blockstream.info${networkId === 'testnet' ? '/testnet': ''}/api/address/${address}/utxo`,
       );
 
       if (!res) return
@@ -215,10 +221,8 @@ export const bitcoin = {
       await psbt.signAllInputsAsync(keyPair);
     } catch (e) {
       console.error('Error signing inputs:', e);
-      // return;
     }
 
-    console.log('Generated signature in getSignature:', signature);
     console.log('Returning signature:', signature);
     return signature;  // Return the generated signature
   },
@@ -230,7 +234,6 @@ export const bitcoin = {
     path,
     sig
   }) => {
-    console.log('broadcast, amount', amount)
     const result = await constructPsbt(address, to, amount)
     if (!result) return
     const [utxos, psbt, explorer] = result;
@@ -254,8 +257,6 @@ export const bitcoin = {
 
         const recoveredPubkeys = recoverPubkeyFromSignature(transactionHash, rawSignature)
         console.log(recoveredPubkeys, publicKey)
-
-        // if (recoveredPubkeys[0] !== publicKey && recoveredPubkeys[1] !== publicKey) throw new Error('Signature does not match provided public key')
 
         return rawSignature;
       },
@@ -295,14 +296,18 @@ export const bitcoin = {
     } catch (e) {
       console.log('error broadcasting bitcoin tx', JSON.stringify(e));
     }
+    return 'failed'
   },
 };
 
-const bitcoinRpc = `https://blockstream.info/testnet/api`;
 async function fetchTransaction(transactionId) {
+  const networkId = useStore.getState().networkId
+  const bitcoinRpc = `https://blockstream.info/${networkId === 'testnet' ? 'testnet' : ''}/api`;
+
   const data = await fetchJson(`${bitcoinRpc}/tx/${transactionId}`);
   const tx = new bitcoinJs.Transaction();
 
+  if (!data || !tx) throw new Error('Failed to fetch transaction')
   tx.version = data.version;
   tx.locktime = data.locktime;
 

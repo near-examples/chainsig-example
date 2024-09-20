@@ -1,13 +1,9 @@
 import * as nearAPI from 'near-api-js';
 import BN from 'bn.js';
 import { useStore } from '../layout';
+import { MPC_VARIABLE } from '../config'
 
-const { Near, Account, keyStores, WalletConnection } = nearAPI;
-
-// const contractId = "v5.multichain-mpc-dev.testnet"
-// const contractId = "multichain-testnet-2.testnet"
-// const contractId = 'v2.multichain-mpc.testnet'
-// const contractId = "v1.signer-dev.testnet"
+const { Near, keyStores, WalletConnection } = nearAPI;
 
 const contractId = process.env.MPC_CONTRACT_ID;
 
@@ -20,16 +16,12 @@ export async function sign(payload, path) {
   isSigning = true;
 
   const wallet = useStore.getState().wallet;
-
+  const networkId = useStore.getState().networkId
+  const contractId = MPC_VARIABLE[networkId === 'testnet' ? 'MPC_CONTRACT_ID_TESTNET' : 'MPC_CONTRACT_ID_MAINNET']
   if (!wallet) {
     console.error('Wallet is not initialized');
     return;
   }
-
-  // if (!wallet.isSignedIn()) {
-  //   wallet.signIn(contractId);
-  //   return;
-  // }
 
   const args = {
     request: {
@@ -38,9 +30,8 @@ export async function sign(payload, path) {
       key_version: 0,
     },
   };
-  const attachedDeposit = '1'; // 1 yoctoNEAR
+  const attachedDeposit = '5'; // 1 yoctoNEAR
 
-  console.log('wtf ? ??? ? ? ? ? ')
   let result
   try {
     result = await wallet.callMethod({
@@ -60,13 +51,15 @@ export async function sign(payload, path) {
 
 export async function signX(payload, path) {
   const keyStore = new keyStores.BrowserLocalStorageKeyStore();
+  const networkId = useStore.getState().networkId
+
   const config = {
-    networkId: 'testnet',
+    networkId,
     keyStore: keyStore,
-    nodeUrl: 'https://rpc.testnet.near.org',
+    nodeUrl: networkId === 'testnet' ? 'https://rpc.testnet.near.org' : 'http://rpc.mainnet.near.org',
+    // nodeUrl: 'http://rpc.mainnet.near.org',
     // walletUrl: 'https://testnet.mynearwallet.com/',
     // walletUrl: 'https://testnet.meteorwallet.app/', // Change this to the Meteor Wallet URL
-
     helperUrl: 'https://helper.testnet.near.org',
     explorerUrl: 'https://testnet.nearblocks.io',
   };
@@ -75,13 +68,7 @@ export async function signX(payload, path) {
   const wallet = new WalletConnection(near, 'my-app');
   const account = wallet.account();
 
-  console.log(wallet, account)
   // Ensure the user is signed in
-  if (!wallet.isSignedIn()) {  
-    // @ts-ignore
-    wallet.requestSignIn(contractId);
-    return;
-  }
 
   const args = {
     request: {
@@ -90,7 +77,7 @@ export async function signX(payload, path) {
       key_version: 0,
     },
   };
-  const attachedDeposit = new BN('1'); // 1 yoctoNEAR
+  const attachedDeposit = new BN('10'); // 1 yoctoNEAR
 
   console.log(
     'sign payload',
@@ -108,23 +95,9 @@ export async function signX(payload, path) {
       gas: new BN('250000000000000'), // 250 Tgas
       attachedDeposit, // Ensure attachedDeposit is correctly set
     });
-
+    
   } catch (e) {
     console.log(e)
     return console.log('error signing', JSON.stringify(e));
   }
-
-  // parse result into signature values we need r, s but we don't need first 2 bytes of r (y-parity)
-  // if ('SuccessValue' in (res.status)) {
-  //   const successValue = (res.status).SuccessValue;
-  //   const decodedValue = Buffer.from(successValue, 'base64').toString('utf-8');
-  //   const parsedJSON = JSON.parse(decodedValue);
-
-  //   return {
-  //     r: parsedJSON[0].slice(2),
-  //     s: parsedJSON[1],
-  //   };
-  // } else {
-  //   return console.log('error signing', JSON.stringify(res));
-  // }
 }

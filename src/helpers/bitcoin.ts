@@ -275,6 +275,9 @@ export const bitcoin = {
 
     psbt.finalizeAllInputs();
 
+    const networkId = useStore.getState().networkId
+    const bitcoinRpc = `https://blockstream.info/${networkId === 'testnet' ? 'testnet' : ''}/api`;
+  
     // broadcast tx
     try {
       const res = await fetch(`https://corsproxy.io/?${bitcoinRpc}/tx`, {

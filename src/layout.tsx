@@ -21,11 +21,21 @@ export const useStore = createStore<StoreState>((set) => ({
   networkId: 'testnet',
   setNetworkId: (networkId) => set({ networkId }),
   setWallet: (wallet) => set({ wallet }),
-  setSignedAccountId: (signedAccountId) => set({ signedAccountId })
+  setSignedAccountId: (signedAccountId) => {
+    // check okx accountId 
+    // set localStorage okx var
+    return set({ signedAccountId })
+  }
 }))
 
 export default function RootLayout({ children }) {
   const { setWallet, setSignedAccountId, networkId } = useStore();
+
+  if (typeof window !== 'undefined') {
+    window.okxwallet.near.on("accountChanged", ((accountId) => {
+      // do something
+    }))
+  }
 
   useEffect(() => {
     // create wallet instance

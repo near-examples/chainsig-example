@@ -29,6 +29,7 @@
     "@web3-onboard/walletconnect": "^2.5.4",
     "autoprefixer": "^10.4.19",
     "base64-js": "^1.5.1",
+    "bech32": "^2.0.0",
     "better-sqlite3": "^11.0.0",
     "bitcoinjs-lib": "^6.1.5",
     "bn": "^1.0.5",

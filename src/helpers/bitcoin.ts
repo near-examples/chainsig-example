@@ -69,13 +69,12 @@ const constructPsbt = async (
       } else if (scriptHex.startsWith('0014')) {
         console.log('segwit');
 
-        // P2WPKH (SegWit) input
         inputOptions = {
           hash: utxo.txid,
           index: utxo.vout,
           witnessUtxo: {
             script: transaction.outs[utxo.vout].script,
-            value: utxo.value,
+            value: utxo.value,  // Amount in satoshis
           },
         };
       } else if (scriptHex.startsWith('0020') || scriptHex.startsWith('5120')) {
@@ -210,15 +209,40 @@ export const bitcoin = {
     let signature
     const keyPair = {
       publicKey: Buffer.from(publicKey, 'hex'),
+      // sign: async (transactionHash) => {
+      //   // const sighash = psbt.getHashForWitnessV0(index, script, value, bitcoinJs.Transaction.SIGHASH_ALL);
+
+      //   const payload = Object.values(ethers.utils.arrayify(transactionHash));
+
+      //   signature = await sign(payload, path);
+      // },
       sign: async (transactionHash) => {
+        const utxo = utxos[0]; // The UTXO being spent
+        const value = utxo.value; // The value in satoshis of the UTXO being spent
+        
+        if (isNaN(value)) {
+          throw new Error(`Invalid value for UTXO at index ${transactionHash}: ${utxo.value}`);
+        }
+
         const payload = Object.values(ethers.utils.arrayify(transactionHash));
+  
+        // Sign the payload using the external `sign` method (e.g., NEAR signature)
         signature = await sign(payload, path);
       },
     };
 
     try {
-      // Wait for the inputs to be signed
-      await psbt.signAllInputsAsync(keyPair);
+      // Sign each input manually
+      await Promise.all(
+        utxos.map(async (_, index) => {
+          try {
+            await psbt.signInputAsync(index, keyPair);
+            console.log(`Input ${index} signed successfully`);
+          } catch (e) {
+            console.warn(`Error signing input ${index}:`, e);
+          }
+        })
+      );
     } catch (e) {
       console.error('Error signing inputs:', e);
     }
@@ -240,7 +264,7 @@ export const bitcoin = {
 
     const keyPair = {
       publicKey: Buffer.from(publicKey, 'hex'),
-      sign: (transactionHash) => {
+      sign: () => {
         const rHex = sig.big_r.affine_point.slice(2); // Remove the "03" prefix
         let sHex = sig.s.scalar;
 
@@ -254,9 +278,6 @@ export const bitcoin = {
 
         // Combine r and s
         const rawSignature = Buffer.concat([rBuf, sBuf]);
-
-        const recoveredPubkeys = recoverPubkeyFromSignature(transactionHash, rawSignature)
-        console.log(recoveredPubkeys, publicKey)
 
         return rawSignature;
       },
@@ -273,8 +294,12 @@ export const bitcoin = {
       }),
     );
 
-    psbt.finalizeAllInputs();
-
+    try {
+      psbt.finalizeAllInputs();
+    } catch (e) {
+      console.log('e', e)
+    }
+  
     const networkId = useStore.getState().networkId
     const bitcoinRpc = `https://blockstream.info/${networkId === 'testnet' ? 'testnet' : ''}/api`;
   

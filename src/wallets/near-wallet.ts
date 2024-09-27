@@ -24,7 +24,7 @@ export class Wallet {
    * const wallet = new Wallet({ networkId: 'testnet', createAccessKeyFor: 'contractId' });
    * wallet.startUp((signedAccountId) => console.log(signedAccountId));
    */
-  constructor({ networkId = 'testnet', createAccessKeyFor = undefined }) {
+  constructor({ networkId = 'testnet' /*??*/, createAccessKeyFor = undefined }) {
     // @ts-ignore
     this.createAccessKeyFor = createAccessKeyFor;
     // @ts-ignore
@@ -83,6 +83,7 @@ export class Wallet {
   signOut = async () => {
     // @ts-ignore
     const selectedWallet = await (await this.selector).wallet();
+    // remove okx localstorage var 
     selectedWallet.signOut();
   };
 

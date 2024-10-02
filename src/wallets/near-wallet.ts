@@ -54,7 +54,11 @@ export class Wallet {
     const isSignedIn = walletSelector.isSignedIn();
     const accountId = isSignedIn ? walletSelector.store.getState().accounts[0].accountId : '';
 
-    walletSelector.store.observable
+    const okx_account_id = localStorage.getItem('okx_account_id')
+    if (okx_account_id) {
+      accountChangeHook(okx_account_id)
+    } else {
+      walletSelector.store.observable
       .pipe(
         // @ts-ignore
         map(state => state.accounts),
@@ -64,6 +68,7 @@ export class Wallet {
         const signedAccount = accounts.find((account) => account.active)?.accountId;
         accountChangeHook(signedAccount);
       });
+    }
 
     return accountId;
   };

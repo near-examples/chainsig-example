@@ -14,7 +14,15 @@ export const Navigation = () => {
     if (!wallet) return;
 
     if (signedAccountId) {
-      setAction(() => () => wallet.signOut());
+      setAction(() => () => {
+        const okx_account_id = localStorage.getItem('okx_account_id')
+        if (okx_account_id) {
+          localStorage.removeItem('okx_account_id')
+          window.location.replace('/');
+        } else {
+          wallet.signOut()
+        }
+      });
       setLabel(`Logout ${signedAccountId}`);
     } else {
       setAction(() => () => wallet.signIn());

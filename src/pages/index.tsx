@@ -114,8 +114,14 @@ export default function Home() {
 
     const btcAddress = struct.address
     const btcPublicKey = struct.publicKey
+    const okx_account_id = localStorage.getItem('okx_account_id')
 
-    const walletId = localStorage.getItem('near-wallet-selector:selectedWalletId').replace(/['"]+/g, '')
+    let walletId
+    if (okx_account_id) {
+      walletId = 'okx-wallet'
+    } else {
+      walletId = localStorage.getItem('near-wallet-selector:selectedWalletId').replace(/['"]+/g, '')
+    }
 
     if (walletId === "meteor-wallet" || walletId === 'okx-wallet') {
       setProgress(true)

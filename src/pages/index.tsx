@@ -12,6 +12,7 @@ import { StepperModal } from '../components/StepperModal'
 import { convertBitcoin } from '../helpers/utils'
 import { MPC_VARIABLE } from '../config'
 import Switch from '../components/Switch'
+import Selector from '../components/Select'
 
 export default function Home() {
   const {
@@ -19,7 +20,7 @@ export default function Home() {
     handleSubmit,
     formState: { errors },
   } = useForm()
-  const { signedAccountId, wallet, networkId, setNetworkId } = useStore();
+  const { signedAccountId, wallet, networkId, addressType, setNetworkId, setAddressType } = useStore();
   const [balance, setBalance] = useState('0')
   const [address, setAddress] = useState('')
   const [progress, setProgress] = useState(false)
@@ -58,7 +59,8 @@ export default function Home() {
       publicKey: MPC_PUBLIC_KEY,
       accountId: signedAccountId,
       path: storagePath,
-      isTestnet: networkId === 'testnet'
+      isTestnet: networkId === 'testnet',
+      addressType: addressType
     })
 
     const btcAddress = struct.address
@@ -96,7 +98,9 @@ export default function Home() {
       publicKey: MPC_PUBLIC_KEY,
       accountId: signedAccountId,
       path,
-      isTestnet: networkId === 'testnet'
+      isTestnet: networkId === 'testnet',
+      addressType: addressType
+
     })
     setAddress(struct.address)
     return [struct.address, struct.publicKey]
@@ -109,7 +113,8 @@ export default function Home() {
       publicKey: MPC_PUBLIC_KEY,
       accountId: signedAccountId,
       path,
-      isTestnet: networkId === 'testnet'
+      isTestnet: networkId === 'testnet',
+      addressType: addressType
     })
 
     const btcAddress = struct.address
@@ -165,7 +170,7 @@ export default function Home() {
 
   useEffect(() => {
     getAddress()
-  }, [signedAccountId, path, balance, error, hash, MPC_PUBLIC_KEY])
+  }, [signedAccountId, path, balance, error, hash, MPC_PUBLIC_KEY, addressType])
 
   const checkBal = async () => {
     const response = await bitcoin.getBalance({
@@ -197,7 +202,7 @@ export default function Home() {
         ? <div className={"flex border justify-center items-center min-w-[30em] max-w-[30em] w-[50vw] min-h-[24em] max-h-[30em] h-[50vh] bg-white rounded-xl shadow-xl p-4 text-over"} style={{ display: 'flex', flexDirection: 'column' }}>
           <Success />
           <p className='my-2'>Explorer link:</p>
-          <p className="w-full break-words cursor-pointer hover:opacity-50 my-2" onClick={() => window.open(`https://blockstream.info/testnet/tx/${txHash}`, '_blank')}>{`https://blockstream.info/testnet/tx/${txHash}`}</p> 
+          <p className="w-full break-words cursor-pointer hover:opacity-50 my-2" onClick={() => window.open(`https://blockstream.info${networkId === 'testnet' ? '/testnet' : ''}/tx/${txHash}`, '_blank')}>{`https://blockstream.info${networkId === 'testnet' ? '/testnet' : ''}/tx/${txHash}`}</p> 
           <p className='my-2'>NOTE: it might take a minute for transaction to be included in mempool</p>
           <button onClick={() => resetForm()} className={'mt-4 bg-blue-500 hover:bg-blue-700 text-white py-2 px-4 rounded-md border w-48 mb-2 cursor-pointer'}>OK</button>
         </div>
@@ -208,14 +213,22 @@ export default function Home() {
           </div>
         : hash
         ? <StepperModal broadcastTx={broadcastTx} reset={resetForm} />
-        : <div className={"flex justify-center min-w-[30em] max-w-[30em] w-[50vw] min-h-[28em] max-h-[24em] h-[50vh] bg-white rounded-xl shadow-xl p-4"} style={{ display: 'flex', flexDirection: 'column' }}>
-            <p>{`Path:`}</p>
+        : <div className={"flex justify-center min-w-[30em] max-w-[30em] w-[50vw] min-h-[31em] max-h-[24em] h-[50vh] bg-white rounded-xl shadow-xl p-4"} style={{ display: 'flex', flexDirection: 'column' }}>
+          <div className='flex'>
+            <div className={'flex flex-col w-[12.35em]'}>
+              <p className='w-1/2'>{`Tx type:`}</p>
+              <Selector onValueChange={setAddressType} />
+            </div>
+            <div className='w-1/2 flex justify-end items-start mt-[5px] ml-5'>
+              <Switch setNetwork={setNetworkId} />
+            </div>
+          </div>
+          <p>{`Path:`}</p>
           <div className='w-full flex'>
             <div className='w-1/2'>
               <input className="p-1 rounded bg-slate-700 text-white pl-4" defaultValue={'bitcoin,1'}  {...register("path")} onChange={(e) => setPath(e.target.value)} />
             </div>
             <div className='w-1/2 flex items-center justify-end'>
-              <Switch setNetwork={setNetworkId} />
             </div>
           </div>
           <p>{`Address:`}</p>

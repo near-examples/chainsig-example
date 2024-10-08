@@ -9,9 +9,11 @@ interface StoreState {
   wallet: Wallet | undefined;
   signedAccountId: string;
   networkId: string;
+  addressType: 'segwit' | 'legacy';
   setNetworkId: (networkId: string) => void;
   setWallet: (wallet: Wallet) => void;
   setSignedAccountId: (signedAccountId: string) => void;
+  setAddressType: (addressType: 'segwit' | 'legacy') => void;
 }
 
 // Store to share wallet and signed account
@@ -19,6 +21,7 @@ export const useStore = createStore<StoreState>((set) => ({
   wallet: undefined,
   signedAccountId: '',
   networkId: 'testnet',
+  addressType: 'segwit',
   setNetworkId: (networkId) => set({ networkId }),
   setWallet: (wallet) =>set({ wallet }),
   setSignedAccountId: (signedAccountId) => {
@@ -28,7 +31,8 @@ export const useStore = createStore<StoreState>((set) => ({
       return set({ okx_account_id })
     }
     return set({ signedAccountId })
-  }
+  },
+  setAddressType: (addressType) => set({ addressType })
 }))
 
 export default function RootLayout({ children }) {

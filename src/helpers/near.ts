@@ -40,7 +40,7 @@ export async function sign(payload, path) {
       key_version: 0,
     },
   };
-  const attachedDeposit = '5'
+  const attachedDeposit = '200000000000000000000000'
 
   let result
   try {

@@ -150,13 +150,13 @@ export async function generateBtcAddress({
   accountId,
   path = '',
   isTestnet = true,
-  addressType = 'p2wpkh'
+  addressType = 'segwit'
 }: {
   publicKey: string;
   accountId: string;
   path?: string;
   isTestnet?: boolean;
-  addressType?: 'p2pkh' | 'p2wpkh';
+  addressType?: 'legacy' | 'segwit';
 }): Promise<{ address: string; publicKey: string }> {
   const childPublicKey = await deriveChildPublicKey(
     najPublicKeyStrToCompressedPoint(publicKey),  // Use the compressed key
@@ -166,10 +166,10 @@ export async function generateBtcAddress({
 
   let address: string;
 
-  if (addressType === 'p2pkh') {
+  if (addressType === 'legacy') {
     const networkByte = Buffer.from([isTestnet ? 0x6f : 0x00]); // 0x00 for mainnet, 0x6f for testnet
     address = await uncompressedHexPointToBtcAddress(childPublicKey, networkByte);
-  } else if (addressType === 'p2wpkh') {
+  } else if (addressType === 'segwit') {
     const networkPrefix = isTestnet ? 'tb' : 'bc';
     address = await uncompressedHexPointToSegwitAddress(childPublicKey, networkPrefix);
   } else {

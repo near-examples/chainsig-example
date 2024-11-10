@@ -3,19 +3,14 @@ import BN from 'bn.js';
 import { useStore } from '../layout';
 import { MPC_VARIABLE } from '../config'
 import { providers } from 'near-api-js';
+import { retryWithDelay } from './utils'
 
 const { Near, keyStores, WalletConnection } = nearAPI;
 const contractId = process.env.MPC_CONTRACT_ID;
 
 let isSigning = false; // move to store?
 
-const getTransactionResult = async (txHash) => {
-  const provider = new providers.JsonRpcProvider({ url: 'http://rpc.mainnet.near.org' });
 
-  // Retrieve transaction result from the network
-  const transaction = await provider.txStatus(txHash, 'unnused');
-  return providers.getTransactionLastResult(transaction);
-}
 
 export async function sign(payload, path) {
   if (isSigning) {
@@ -40,7 +35,7 @@ export async function sign(payload, path) {
       key_version: 0,
     },
   };
-  const attachedDeposit = '200000000000000000000000'
+  const attachedDeposit = '350000000000000000000000'
 
   let result
   try {
@@ -121,3 +116,17 @@ export async function signX(payload, path) {
     return console.log('error signing', JSON.stringify(e));
   }
 }
+
+// Updated getTransactionResult function using retryWithDelay
+const getTransactionResult = async (txHash) => {
+  const provider = new providers.JsonRpcProvider({ url: 'http://rpc.mainnet.near.org' });
+
+  // Define the function to retrieve the transaction result
+  const fetchTransactionResult = async () => {
+    const transaction = await provider.txStatus(txHash, 'unnused');
+    return providers.getTransactionLastResult(transaction);
+  };
+
+  // Use the retry helper to attempt fetching the transaction result
+  return await retryWithDelay(fetchTransactionResult);
+};

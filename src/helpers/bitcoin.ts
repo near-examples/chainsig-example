@@ -142,6 +142,7 @@ export const bitcoin = {
         value: utxo.value,
       }));
 
+      console.log('utxos', utxos)
       let maxValue = 0;
       utxos.forEach((utxo) => {
         if (utxo.value > maxValue) maxValue = utxo.value;
@@ -209,13 +210,6 @@ export const bitcoin = {
     let signature
     const keyPair = {
       publicKey: Buffer.from(publicKey, 'hex'),
-      // sign: async (transactionHash) => {
-      //   // const sighash = psbt.getHashForWitnessV0(index, script, value, bitcoinJs.Transaction.SIGHASH_ALL);
-
-      //   const payload = Object.values(ethers.utils.arrayify(transactionHash));
-
-      //   signature = await sign(payload, path);
-      // },
       sign: async (transactionHash) => {
         const utxo = utxos[0]; // The UTXO being spent
         const value = utxo.value; // The value in satoshis of the UTXO being spent
@@ -277,6 +271,7 @@ export const bitcoin = {
         const sBuf = Buffer.from(sHex, 'hex');
 
         // Combine r and s
+        // @ts-ignore
         const rawSignature = Buffer.concat([rBuf, sBuf]);
 
         return rawSignature;

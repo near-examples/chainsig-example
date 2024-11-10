@@ -31,6 +31,8 @@ export default function Home() {
   const [MPC_PUBLIC_KEY, setMpcPublicKey] = useState(MPC_VARIABLE['MPC_PUBLIC_KEY_TESTNET'])
   const router = useRouter()
 
+  console.log('addressType', addressType)
+
   useEffect(() => {
     setMpcPublicKey(MPC_VARIABLE[networkId === 'testnet' ? 'MPC_PUBLIC_KEY_TESTNET' : 'MPC_PUBLIC_KEY_MAINNET'])
   }, [networkId])
@@ -60,7 +62,7 @@ export default function Home() {
       accountId: signedAccountId,
       path: storagePath,
       isTestnet: networkId === 'testnet',
-      addressType: addressType
+      addressType
     })
 
     const btcAddress = struct.address
@@ -99,8 +101,7 @@ export default function Home() {
       accountId: signedAccountId,
       path,
       isTestnet: networkId === 'testnet',
-      addressType: addressType
-
+      addressType
     })
     setAddress(struct.address)
     return [struct.address, struct.publicKey]
@@ -114,7 +115,7 @@ export default function Home() {
       accountId: signedAccountId,
       path,
       isTestnet: networkId === 'testnet',
-      addressType: addressType
+      addressType
     })
 
     const btcAddress = struct.address
@@ -217,6 +218,7 @@ export default function Home() {
           <div className='flex'>
             <div className={'flex flex-col w-[12.35em]'}>
               <p className='w-1/2'>{`Tx type:`}</p>
+              {/* @ts-ignore */}
               <Selector onValueChange={setAddressType} />
             </div>
             <div className='w-1/2 flex justify-end items-start mt-[5px] ml-5'>
